@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${BENCHMARK_JOB_NAME}-clean
+  namespace: ${BENCHMARK_NAMESPACE}
+  labels:
+    benchmark/system: kube-bench
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        benchmark/system: kube-bench
+        benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
+    spec:
+      nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+      restartPolicy: Never
+      volumes:
+      - name: kafka-sources
+        configMap:
+          name: nexmark-kafka-sources-${BENCHMARK_JOB_NAME}
+      - name: queries
+        configMap:
+          name: nexmark-queries-${BENCHMARK_JOB_NAME}
+      - name: flink-config-volume
+        configMap:
+          name: flink-config
+          items:
+            - key: flink-conf.yaml
+              path: flink-conf.yaml
+      initContainers:
+      - name: clean
+        image: ghcr.io/risingwavelabs/flink-sql-cli:${BENCHMARK_FLINK_IMAGE_TAG}
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: /nexmark/kafka-sources
+          name: kafka-sources
+          readOnly: true
+        - mountPath: /nexmark/queries
+          name: queries
+          readOnly: true
+        - name: flink-config-volume
+          mountPath: /opt/flink/conf/
+          readOnly: true
+        command:
+          - bash
+        args:
+          - -c
+          - |-
+            echo -e "Cancelling all flink jobs"
+            echo -e "*************************"
+            JOB_LIST=`/opt/flink/bin/flink list | grep -Eo "[0-9a-fA-F]{32}"`
+            echo $${TRICK_SYMBOLS_EMPTY}{JOB_LIST}
+            for job in $${TRICK_SYMBOLS_EMPTY}{JOB_LIST}
+                do
+                    echo -e Cancelling $${TRICK_SYMBOLS_EMPTY}{job}
+                    /opt/flink/bin/flink cancel $${TRICK_SYMBOLS_EMPTY}{job}
+                done
+            echo -e "*************************"
+            echo -e "All jobs cancelled successfully"
+      containers:
+      - name: kafka-clean
+        image: bitnami/kafka:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        args:
+        - -c
+        - |-
+          if ! ${BENCHMARK_NEXMARK_KAFKA_KEEP_KAFKA_DATA}; then
+            /opt/bitnami/kafka/bin/kafka-topics.sh --delete --bootstrap-server ${BENCHMARK_KAFKA_NAME}.${BENCHMARK_NAMESPACE}:9092 --topic nexmark-events;
+          fi

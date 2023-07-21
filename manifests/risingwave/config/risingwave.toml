@@ -1,0 +1,11 @@
+[system]
+data_directory = "${BENCHMARK_RISINGWAVE_STORAGE_S3_DATA_DIRECTORY}"
+
+[server]
+telemetry_enabled = ${BENCHMARK_RISINGWAVE_CONFIGS_TELEMETRY_ENABLED}
+
+[streaming.developer]
+stream_enable_executor_row_count = true
+
+[storage.file_cache]
+dir = "${BENCHMARK_RISINGWAVE_CONFIGS_FILE_CACHE_DIR}"

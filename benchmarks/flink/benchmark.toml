@@ -1,0 +1,86 @@
+[benchmark]
+namespace = "flink"
+system = "flink"
+
+[benchmark.aws]
+ask_before_proceed = false
+
+[benchmark.aws.credentials]
+access_key = ""
+access_secret = ""
+
+[benchmark.job]
+name = "benchmark-job"
+type = "flink-nexmark-kafka"
+
+[benchmark.job.resources]
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
+
+[benchmark.job.wait]
+retry_limit = 500
+retry_interval = 10
+
+[benchmark.pods.distribution]
+mutual_exclusive_policy = "global"
+mutual_exclusive_key = ""
+
+## Kafka related variables.
+[benchmark.kafka]
+enabled = true
+name = "benchmark-kafka"
+keep_pod_enabled = true
+
+[benchmark.nexmark]
+query = "q0"
+
+[benchmark.nexmark_kafka]
+max_events = 2000000000
+generator_thread_num = 8
+event_rate = 1000000
+partition = 8
+keep_kafka_data = true
+skip_insert_kafka = false
+image_pull_policy = "Always"
+
+[benchmark.kafka.resources]
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
+
+[benchmark.kafka.persistence]
+enabled = true
+storage_class = "gp2"
+size = "500Gi"
+
+[benchmark.kafka.zookeeper.persistence]
+enabled = true
+storage_class = ""
+
+[benchmark.kafka.metrics]
+jmx_enabled = true
+servicemonitor_enabled = true
+
+[benchmark.flink]
+enabled = true
+name = "benchmark-flink"
+taskmanager_replicas = "1"
+taskmanager_slots = "8"
+parallelism = "8"
+jobmanager_memory = "15G"
+taskmanager_memory = "15G"
+checkpoint_interval = 180000
+image = { tag = "v1.16.0" }
+
+[benchmark.flink.s3]
+access_key = ""
+access_secret = ""
+bucket = "flink"
+bucket_folder = "checkpoints"
+
+[benchmark.flink.resources]
+cpu = { limit = "8", request = "7" }
+mem = { limit = "15Gi", request = "13Gi" }
+
+[benchmark.flink.persistence]
+storage_class = "bench-iops-12000-tp-500"
+size = "100Gi"

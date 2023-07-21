@@ -1,0 +1,77 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${BENCHMARK_JOB_NAME}-clean
+  namespace: ${BENCHMARK_NAMESPACE}
+  labels:
+    benchmark/system: kube-bench
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        benchmark/system: kube-bench
+        benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
+    spec:
+      nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+      restartPolicy: Never
+      volumes:
+      - name: kafka-sources
+        configMap:
+          name: nexmark-kafka-sources-${BENCHMARK_JOB_NAME}
+      - name: views
+        configMap:
+          name: nexmark-materialized-views-${BENCHMARK_JOB_NAME}
+      - name: sinks
+        configMap:
+          name: nexmark-sinks-${BENCHMARK_JOB_NAME}
+      initContainers:
+      - name: clean
+        image: postgres:latest
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: /nexmark/kafka-sources
+          name: kafka-sources
+          readOnly: true
+        - mountPath: /nexmark/views
+          name: views
+          readOnly: true
+        - mountPath: /nexmark/sinks
+          name: sinks
+          readOnly: true
+        command:
+          - bash
+        args:
+          - -c
+          - |-
+            IFS=',' read -ra QUERIES <<< "${BENCHMARK_NEXMARK_QUERY}"
+            for query in "$${TRICK_SYMBOLS_EMPTY}{QUERIES[@]}"; do
+              if ${BENCHMARK_NEXMARK_KAFKA_ENABLE_BLACKHOLE}; then 
+                psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/sinks/$${TRICK_SYMBOLS_EMPTY}{query}.drop.sql;
+              else
+                psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/views/$${TRICK_SYMBOLS_EMPTY}{query}.drop.sql;
+              fi
+            done
+            if ${BENCHMARK_NEXMARK_KAFKA_SEPARATE_TOPICS}; then 
+              psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/kafka-sources/drop.sql;
+            else
+              psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/kafka-sources/drop_combined.sql;
+            fi
+      containers:
+      - name: kafka-clean
+        image: bitnami/kafka:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        args:
+        - -c
+        - |-
+          if ! ${BENCHMARK_NEXMARK_KAFKA_KEEP_KAFKA_DATA}; then
+            if ${BENCHMARK_NEXMARK_KAFKA_SEPARATE_TOPICS}; then 
+              /opt/bitnami/kafka/bin/kafka-topics.sh --delete --bootstrap-server ${BENCHMARK_KAFKA_NAME}.${BENCHMARK_NAMESPACE}:9092 --topic nexmark-bid;
+              /opt/bitnami/kafka/bin/kafka-topics.sh --delete --bootstrap-server ${BENCHMARK_KAFKA_NAME}.${BENCHMARK_NAMESPACE}:9092 --topic nexmark-auction;
+              /opt/bitnami/kafka/bin/kafka-topics.sh --delete --bootstrap-server ${BENCHMARK_KAFKA_NAME}.${BENCHMARK_NAMESPACE}:9092 --topic nexmark-person;
+            else 
+              /opt/bitnami/kafka/bin/kafka-topics.sh --delete --bootstrap-server ${BENCHMARK_KAFKA_NAME}.${BENCHMARK_NAMESPACE}:9092 --topic nexmark-events;
+            fi
+          fi

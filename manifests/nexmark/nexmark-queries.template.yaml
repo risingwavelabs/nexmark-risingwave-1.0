@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexmark-queries-${BENCHMARK_JOB_NAME}
+  namespace: ${BENCHMARK_NAMESPACE}
+data:
+  q0.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) from nexmark_q0;
+  q1.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) from nexmark_q1;
+  q2.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) from nexmark_q2;
+  q3.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) from nexmark_q3;
+  q4.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) from nexmark_q4;
+  q5.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) from nexmark_q5;
+  q7.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) from nexmark_q7;
+  q8.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) from nexmark_q8;
+  q9.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) FROM nexmark_q9;
+  q10.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) from nexmark_q10;
+  q14.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) FROM nexmark_q14;
+  q15.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) FROM nexmark_q15;
+  q16.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) FROM nexmark_q16;
+  q17.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) FROM nexmark_q17;
+  q18.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) FROM nexmark_q18;
+  q20.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) FROM nexmark_q20;
+  q21.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) FROM nexmark_q21;
+  q22.sql: |
+    -- noinspection SqlNoDataSourceInspectionForFile
+    -- noinspection SqlResolveForFile
+    select count(*) FROM nexmark_q22;

@@ -1,0 +1,183 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexmark-kafka-sources-${BENCHMARK_JOB_NAME}
+  namespace: ${BENCHMARK_NAMESPACE}
+data:
+  create.sql: | 
+    CREATE TABLE kafka (
+      event_type int,
+      person ROW<
+        id  BIGINT,
+        name  VARCHAR,
+        emailAddress  VARCHAR,
+        creditCard  VARCHAR,
+        city  VARCHAR,
+        state  VARCHAR,
+        dateTime TIMESTAMP(3),
+        extra  VARCHAR>,
+      auction ROW<
+        id  BIGINT,
+        itemName  VARCHAR,
+        description  VARCHAR,
+        initialBid  BIGINT,
+        reserve  BIGINT,
+        dateTime  TIMESTAMP(3),
+        expires  TIMESTAMP(3),
+        seller  BIGINT,
+        category  BIGINT,
+        extra  VARCHAR>,
+      bid ROW<
+        auction  BIGINT,
+        bidder  BIGINT,
+        price  BIGINT,
+        channel  VARCHAR,
+        url  VARCHAR,
+        dateTime  TIMESTAMP(3),
+        extra  VARCHAR>,
+      dateTime AS
+        CASE
+          WHEN event_type = 0 THEN person.dateTime
+          WHEN event_type = 1 THEN auction.dateTime
+          ELSE bid.dateTime
+        END,
+      WATERMARK FOR dateTime AS dateTime - INTERVAL '4' SECOND
+    ) WITH (
+        'connector' = 'kafka',
+        'topic' = 'nexmark-events',
+        'properties.bootstrap.servers' = 'benchmark-kafka.${BENCHMARK_NAMESPACE}:9092',
+        'properties.group.id' = 'nexmark-events',
+        'scan.startup.mode' = 'earliest-offset',
+        'sink.partitioner' = 'fixed',
+        'format' = 'json'
+    );
+
+    CREATE VIEW person AS
+    SELECT
+      person.id,
+      person.name,
+      person.emailAddress,
+      person.creditCard,
+      person.city,
+      person.state,
+      dateTime,
+      person.extra
+    FROM kafka WHERE event_type = 0;
+
+    CREATE VIEW auction AS
+    SELECT
+      auction.id,
+      auction.itemName,
+      auction.description,
+      auction.initialBid,
+      auction.reserve,
+      dateTime,
+      auction.expires,
+      auction.seller,
+      auction.category,
+      auction.extra
+    FROM kafka WHERE event_type = 1;
+    
+    CREATE VIEW bid AS
+    SELECT
+      bid.auction,
+      bid.bidder,
+      bid.price,
+      bid.channel,
+      bid.url,
+      dateTime,
+      bid.extra
+    FROM kafka WHERE event_type = 2;
+  drop.sql:
+    drop VIEW person;
+    drop VIEW auction;
+    drop VIEW bid;
+    drop TABLE kafka;
+  create_without_watermark.sql: | 
+    CREATE TABLE kafka (
+      event_type int,
+      person ROW<
+        id  BIGINT,
+        name  VARCHAR,
+        emailAddress  VARCHAR,
+        creditCard  VARCHAR,
+        city  VARCHAR,
+        state  VARCHAR,
+        dateTime TIMESTAMP(3),
+        extra  VARCHAR>,
+      auction ROW<
+        id  BIGINT,
+        itemName  VARCHAR,
+        description  VARCHAR,
+        initialBid  BIGINT,
+        reserve  BIGINT,
+        dateTime  TIMESTAMP(3),
+        expires  TIMESTAMP(3),
+        seller  BIGINT,
+        category  BIGINT,
+        extra  VARCHAR>,
+      bid ROW<
+        auction  BIGINT,
+        bidder  BIGINT,
+        price  BIGINT,
+        channel  VARCHAR,
+        url  VARCHAR,
+        dateTime  TIMESTAMP(3),
+        extra  VARCHAR>,
+      dateTime AS
+        CASE
+          WHEN event_type = 0 THEN person.dateTime
+          WHEN event_type = 1 THEN auction.dateTime
+          ELSE bid.dateTime
+        END
+    ) WITH (
+        'connector' = 'kafka',
+        'topic' = 'nexmark-events',
+        'properties.bootstrap.servers' = 'benchmark-kafka.${BENCHMARK_NAMESPACE}:9092',
+        'properties.group.id' = 'nexmark-events',
+        'scan.startup.mode' = 'earliest-offset',
+        'sink.partitioner' = 'fixed',
+        'format' = 'json'
+    );
+
+    CREATE VIEW person AS
+    SELECT
+      person.id,
+      person.name,
+      person.emailAddress,
+      person.creditCard,
+      person.city,
+      person.state,
+      dateTime,
+      person.extra
+    FROM kafka WHERE event_type = 0;
+
+    CREATE VIEW auction AS
+    SELECT
+      auction.id,
+      auction.itemName,
+      auction.description,
+      auction.initialBid,
+      auction.reserve,
+      dateTime,
+      auction.expires,
+      auction.seller,
+      auction.category,
+      auction.extra
+    FROM kafka WHERE event_type = 1;
+    
+    CREATE VIEW bid AS
+    SELECT
+      bid.auction,
+      bid.bidder,
+      bid.price,
+      bid.channel,
+      bid.url,
+      dateTime,
+      bid.extra
+    FROM kafka WHERE event_type = 2;
+  drop_without_watermark.sql:
+    drop VIEW person;
+    drop VIEW auction;
+    drop VIEW bid;
+    drop TABLE kafka;

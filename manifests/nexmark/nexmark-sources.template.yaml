@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexmark-sources-${BENCHMARK_JOB_NAME}
+  namespace: ${BENCHMARK_NAMESPACE}
+data:
+  create.sql: |
+    CREATE SOURCE nexmark (
+      event_type BIGINT,
+      person STRUCT<"id" BIGINT,
+                    "name" VARCHAR,
+                    "email_address" VARCHAR,
+                    "credit_card" VARCHAR,
+                    "city" VARCHAR,
+                    "state" VARCHAR,
+                    "date_time" TIMESTAMP,
+                    "extra" VARCHAR>,
+      auction STRUCT<"id" BIGINT,
+                     "item_name" VARCHAR,
+                     "description" VARCHAR,
+                     "initial_bid" BIGINT,
+                     "reserve" BIGINT,
+                     "date_time" TIMESTAMP,
+                     "expires" TIMESTAMP,
+                     "seller" BIGINT,
+                     "category" BIGINT,
+                     "extra" VARCHAR>,
+      bid STRUCT<"auction" BIGINT,
+                 "bidder" BIGINT,
+                 "price" BIGINT,
+                 "channel" VARCHAR,
+                 "url" VARCHAR,
+                 "date_time" TIMESTAMP,
+                 "extra" VARCHAR>
+    ) WITH (
+        connector = 'nexmark',
+        nexmark.split.num = '${BENCHMARK_NEXMARK_SOURCE_SPLIT_NUM}',
+        nexmark.min.event.gap.in.ns = '${BENCHMARK_NEXMARK_SOURCE_MIN_EVENT_GAP_IN_NS}'
+    );
+
+    CREATE VIEW PERSON as select (person).* from nexmark where event_type = 0;
+    CREATE VIEW AUCTION as select (auction).* from nexmark where event_type = 1;
+    CREATE VIEW BID as select (bid).* from nexmark where event_type = 2;
+  create_watermark.sql: |
+    CREATE SOURCE nexmark (
+      event_type BIGINT,
+      person STRUCT<"id" BIGINT,
+                    "name" VARCHAR,
+                    "email_address" VARCHAR,
+                    "credit_card" VARCHAR,
+                    "city" VARCHAR,
+                    "state" VARCHAR,
+                    "date_time" TIMESTAMP,
+                    "extra" VARCHAR>,
+      auction STRUCT<"id" BIGINT,
+                     "item_name" VARCHAR,
+                     "description" VARCHAR,
+                     "initial_bid" BIGINT,
+                     "reserve" BIGINT,
+                     "date_time" TIMESTAMP,
+                     "expires" TIMESTAMP,
+                     "seller" BIGINT,
+                     "category" BIGINT,
+                     "extra" VARCHAR>,
+      bid STRUCT<"auction" BIGINT,
+                 "bidder" BIGINT,
+                 "price" BIGINT,
+                 "channel" VARCHAR,
+                 "url" VARCHAR,
+                 "date_time" TIMESTAMP,
+                 "extra" VARCHAR>,
+      p_time TIMESTAMPTZ as proctime(),
+      date_time TIMESTAMP AS
+                CASE
+                    WHEN event_type = 0 THEN (person).date_time
+                    WHEN event_type = 1 THEN (auction).date_time
+                    ELSE (bid).date_time
+                END,
+       WATERMARK FOR date_time AS date_time - INTERVAL '5' SECOND
+    ) WITH (
+        connector = 'nexmark',
+        nexmark.split.num = '${BENCHMARK_NEXMARK_SOURCE_SPLIT_NUM}',
+        nexmark.min.event.gap.in.ns = '${BENCHMARK_NEXMARK_SOURCE_MIN_EVENT_GAP_IN_NS}'
+    );
+
+    CREATE VIEW bid 
+    AS
+    SELECT (bid).auction, (bid).bidder, (bid).price, (bid).channel, (bid).url, (bid).extra, p_time, date_time FROM nexmark WHERE event_type = 2;
+
+    CREATE VIEW auction 
+    AS
+    SELECT (auction).id, (auction).item_name, (auction).description, (auction).initial_bid, (auction).reserve, (auction).expires, (auction).seller, (auction).category, (auction).extra, p_time, date_time FROM nexmark WHERE event_type = 1;
+    
+    CREATE VIEW person 
+    AS
+    SELECT (person).id, (person).name, (person).email_address, (person).credit_card, (person).city, (person).state, (person).extra, p_time, date_time FROM nexmark WHERE event_type = 0;
+
+  drop.sql:
+    drop view person;
+    drop view auction;
+    drop view bid;
+    drop source nexmark;

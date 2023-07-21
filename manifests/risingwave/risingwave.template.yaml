@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${BENCHMARK_RISINGWAVE_NAME}-node-envs
+  namespace: ${BENCHMARK_NAMESPACE}
+  labels:
+    benchmark/system: kube-bench
+stringData: ${BENCHMARK_RISINGWAVE_GEN_NODE_ENVS}
+---
+apiVersion: risingwave.risingwavelabs.com/v1alpha1
+kind: RisingWave
+metadata:
+  name: ${BENCHMARK_RISINGWAVE_NAME}
+  namespace: ${BENCHMARK_NAMESPACE}
+  labels:
+    benchmark/system: kube-bench
+spec:
+  enableDefaultServiceMonitor: true
+  metaStore:
+    etcd:
+      endpoint: "${BENCHMARK_ETCD_NAME}.${BENCHMARK_NAMESPACE}:2379"
+  stateStore: ${BENCHMARK_RISINGWAVE_STORAGE_GEN_OBJECTS}
+  configuration:
+    configMap:
+      name: ${BENCHMARK_RISINGWAVE_NAME}-config-template
+      key: risingwave.toml
+  image: ghcr.io/risingwavelabs/risingwave:${BENCHMARK_RISINGWAVE_VERSION}
+  components:
+    frontend:
+      nodeGroups:
+      - name: f
+        replicas: ${BENCHMARK_RISINGWAVE_REPLICAS_FRONTEND}
+        upgradeStrategy:
+          type: Recreate
+        template:
+          spec:
+            envFrom:
+            - secretRef:
+                name: ${BENCHMARK_RISINGWAVE_NAME}-node-envs
+                optional: true
+            nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+            affinity: ${BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY_FRONTEND_META}
+    meta:
+      nodeGroups:
+      - name: m
+        replicas: ${BENCHMARK_RISINGWAVE_REPLICAS_META}
+        upgradeStrategy:
+          type: Recreate
+        template:
+          spec:
+            nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+            affinity: ${BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY_FRONTEND_META}
+            envFrom:
+            - secretRef:
+                name: ${BENCHMARK_RISINGWAVE_NAME}-node-envs
+                optional: true
+            env:
+            - name: MALLOC_CONF
+              value: prof:${BENCHMARK_RISINGWAVE_META_MEMORY_PROFILING_ENABLE},lg_prof_interval:${BENCHMARK_RISINGWAVE_META_MEMORY_PROFILING_LG_PROF_INTERVAL},lg_prof_sample:${BENCHMARK_RISINGWAVE_META_MEMORY_PROFILING_LG_PROF_SAMPLE},prof_prefix:/risingwave/meta
+            - name: RUST_LOG
+              value: "${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_stream=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_batch=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_storage=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_meta=${BENCHMARK_RISINGWAVE_LOG_LEVEL}"
+    compactor:
+      nodeGroups:
+      - name: c
+        replicas: ${BENCHMARK_RISINGWAVE_REPLICAS_COMPACTOR}
+        template:
+          metadata:
+            labels:
+              benchmark/system: kube-bench
+              benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
+              benchmark/pod-affinity: compactor
+          spec:
+            nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+            affinity: ${BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY}
+            resources:
+              limits:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_COMPACTOR_CPU_LIMIT}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_COMPACTOR_MEM_LIMIT}
+              requests:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_COMPACTOR_CPU_REQUEST}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_COMPACTOR_MEM_REQUEST}
+            envFrom:
+            - secretRef:
+                name: ${BENCHMARK_RISINGWAVE_NAME}-node-envs
+                optional: true
+            env:
+            - name: MALLOC_CONF
+              value: prof:${BENCHMARK_RISINGWAVE_COMPACTOR_MEMORY_PROFILING_ENABLE},lg_prof_interval:${BENCHMARK_RISINGWAVE_COMPACTOR_MEMORY_PROFILING_LG_PROF_INTERVAL},lg_prof_sample:${BENCHMARK_RISINGWAVE_COMPACTOR_MEMORY_PROFILING_LG_PROF_SAMPLE},prof_prefix:/risingwave/cm
+            - name: RUST_LOG
+              value: "${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_stream=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_batch=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_storage=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_meta=${BENCHMARK_RISINGWAVE_LOG_LEVEL}"
+    compute:
+      nodeGroups:
+      - name: c
+        replicas: ${BENCHMARK_RISINGWAVE_REPLICAS_COMPUTE}
+        volumeClaimTemplates:
+        - metadata:
+            name: cache
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+        template:
+          spec:
+            nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+            affinity: ${BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY_COMPUTE}
+            volumeMounts:
+            - mountPath: /risingwave/cache
+              name: cache
+            resources:
+              limits:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_COMPUTE_CPU_LIMIT}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_COMPUTE_MEM_LIMIT}
+              requests:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_COMPUTE_CPU_REQUEST}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_COMPUTE_MEM_REQUEST}
+            envFrom:
+            - secretRef:
+                name: ${BENCHMARK_RISINGWAVE_NAME}-node-envs
+                optional: true
+            env:
+            - name: MALLOC_CONF
+              value: prof:${BENCHMARK_RISINGWAVE_COMPUTE_MEMORY_PROFILING_ENABLE},lg_prof_interval:${BENCHMARK_RISINGWAVE_COMPUTE_MEMORY_PROFILING_LG_PROF_INTERVAL},lg_prof_sample:${BENCHMARK_RISINGWAVE_COMPUTE_MEMORY_PROFILING_LG_PROF_SAMPLE},prof_prefix:/risingwave/cache/cn
+            - name: RUST_LOG
+              value: "${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_stream=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_batch=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_storage=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_meta=${BENCHMARK_RISINGWAVE_LOG_LEVEL}"
+    connector:
+      nodeGroups:
+      - name: c
+        replicas: ${BENCHMARK_RISINGWAVE_REPLICAS_CONNECTOR}
+        template:
+          spec:
+            nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+            resources:
+              limits:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_CPU_LIMIT}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_MEM_LIMIT}
+              requests:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_CPU_REQUEST}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_MEM_REQUEST}

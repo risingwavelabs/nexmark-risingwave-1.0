@@ -1,0 +1,341 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flink-config
+  labels:
+    app: flink
+data:
+  flink-conf.yaml: |+
+    execution:
+      planner: blink
+      type: streaming
+      time-characteristic: event-time
+      periodic-watermarks-interval: 200
+      result-mode: table
+      max-table-result-rows: 1000000
+      parallelism: 8
+      max-parallelism: 128
+      min-idle-state-retention: 0
+      max-idle-state-retention: 0
+      current-catalog: default_catalog
+      current-database: default_database
+      restart-strategy:
+        type: fallback
+
+    # JVM options for GC
+    env.java.opts: ${BENCHMARK_FLINK_ENV_JAVA_OPTS} 
+
+    # Restart strategy related configuration
+    restart-strategy: ${BENCHMARK_FLINK_RESTART_STRATEGY}
+    restart-strategy.fixed-delay.attempts: ${BENCHMARK_FLINK_RESTART_STRATEGY_FIXED_DELAY_ATTEMPTS}
+    restart-strategy.fixed-delay.delay: ${BENCHMARK_FLINK_RESTART_STRATEGY_FIXED_DELAY_DELAY}
+
+    # Max task attempts to retain in JM
+    jobmanager.execution.attempts-history-size: ${BENCHMARK_FLINK_JOBMANAGER_EXECUTION_ATTEMPTS_HISTORY_SIZE}
+
+    # Maximum backoff time (ms) for partition requests of input channels.
+    taskmanager.network.request-backoff.max: ${BENCHMARK_FLINK_TASKMANAGER_NETWORK_REQUEST_BACKOFF_MAX}
+    
+    jobmanager.rpc.address: flink-jobmanager
+    blob.server.port: 6124
+    jobmanager.rpc.port: 6123
+    taskmanager.rpc.port: 6122
+    queryable-state.proxy.ports: 6125
+    parallelism.default: ${BENCHMARK_FLINK_PARALLELISM}
+    taskmanager.numberOfTaskSlots: ${BENCHMARK_FLINK_TASKMANAGER_SLOTS}
+    jobmanager.memory.process.size: ${BENCHMARK_FLINK_JOBMANAGER_MEMORY}
+    taskmanager.memory.process.size: ${BENCHMARK_FLINK_TASKMANAGER_MEMORY}
+    taskmanager.memory.managed.fraction: ${BENCHMARK_FLINK_TASKMANAGER_MEMORY_MANAGED_FRACTION}
+    taskmanager.network.memory.floating-buffers-per-gate: ${BENCHMARK_FLINK_TASKMANAGER_NETWORK_MEMORY_FLOATING_BUFFERS_PER_GATE}
+    # The number of buffers available for each external blocking channel.
+    # Will change it to be the default value later.
+    taskmanager.network.memory.buffers-per-external-blocking-channel: ${BENCHMARK_FLINK_TASKMANAGER_NETWORK_MEMORY_BUFFERS_PER_EXTERNAL_BLOCKING_CHANNEL}
+
+    # The maximum number of concurrent requests in the reduce-side tasks.
+    # Will change it to be the default value later.
+    task.external.shuffle.max-concurrent-requests: ${BENCHMARK_FLINK_TASK_EXTERNAL_SHUFFLE_MAX_CONCURRENT_REQUESTS}
+    # Whether to enable compress shuffle data when using external shuffle.
+    # Will change it to be the default value later.
+    task.external.shuffle.compression.enable: ${BENCHMARK_FLINK_TASK_EXTERNAL_SHUFFLE_COMPRESSION_ENABLE}
+
+    table.exec.mini-batch.enabled: ${BENCHMARK_FLINK_TABLE_EXEC_MINI_BATCH_ENABLED}
+    table.exec.mini-batch.allow-latency: ${BENCHMARK_FLINK_TABLE_EXEC_MINI_BATCH_ALLOW_LATENCY}
+    table.exec.mini-batch.size: ${BENCHMARK_FLINK_TABLE_EXEC_MINI_BATCH_SIZE}
+    table.optimizer.distinct-agg.split.enabled: ${BENCHMARK_FLINK_TABLE_OPTIMIZER_DISTINCT_AGG_SPLIT_ENABLED}
+
+    pipeline.object-reuse: ${BENCHMARK_FLINK_PIPELINE_OBJECT_REUSE}
+    
+    execution.checkpointing.mode: EXACTLY_ONCE
+    execution.checkpointing.interval: ${BENCHMARK_FLINK_CHECKPOINT_INTERVAL}
+    execution.checkpointing.max-concurrent-checkpoints: ${BENCHMARK_FLINK_EXECUTION_CHECKPOINTING_MAX_CONCURRENT_CHECKPOINTS}
+    # disable final checkpoint to avoid test waiting for the last checkpoint complete
+    execution.checkpointing.checkpoints-after-tasks-finish.enabled: ${BENCHMARK_FLINK_EXECUTION_CHECKPOINTING_CHECKPOINTS_AFTER_TASKS_FINISH_ENABLED}
+    
+    io.tmp.dirs: /opt/flink/tmp
+    
+    state.backend: rocksdb
+    state.checkpoints.dir: s3://${BENCHMARK_FLINK_S3_BUCKET}/${BENCHMARK_FLINK_S3_BUCKET_FOLDER}
+    state.backend.incremental: ${BENCHMARK_FLINK_STATE_BACKEND_INCREMENTAL}
+    state.backend.local-recovery: true
+
+    state.backend.rocksdb.block.blocksize: ${BENCHMARK_FLINK_STATE_BACKEND_ROCKSDB_BLOCK_BLOCKSIZE}
+    state.backend.rocksdb.thread.num: ${BENCHMARK_FLINK_STATE_BACKEND_ROCKSDB_THREAD_NUM}
+    state.backend.rocksdb.writebuffer.count: ${BENCHMARK_FLINK_STATE_BACKEND_ROCKSDB_WRITEBUFFER_COUNT}
+    state.backend.rocksdb.writebuffer.number-to-merge: ${BENCHMARK_FLINK_STATE_BACKEND_ROCKSDB_WRITEBUFFER_NUMBER_TO_MERGE}
+
+    state.backend.rocksdb.compaction.level.use-dynamic-size: ${BENCHMARK_FLINK_STATE_BACKEND_ROCKSDB_COMPACTION_LEVEL_USE_DYNAMIC_SIZE}
+    state.backend.rocksdb.compaction.level.target-file-size-base: ${BENCHMARK_FLINK_STATE_BACKEND_ROCKSDB_COMPACTION_LEVEL_TARGET_FILE_SIZE_BASE}
+    state.backend.rocksdb.use-bloom-filter: ${BENCHMARK_FLINK_STATE_BACKEND_ROCKSDB_USE_BLOOM_FILTER}
+    
+    s3.access-key: ${BENCHMARK_FLINK_S3_ACCESS_KEY}
+    s3.secret-key: ${BENCHMARK_FLINK_S3_ACCESS_SECRET}
+
+    # akka configs
+    akka.ask.timeout: 120s
+    akka.watch.heartbeat.interval: 10s
+    akka.framesize: 102400kB
+    
+    fs.s3a.endpoint: s3.us-east-1.amazonaws.com
+    
+    metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+    metrics.reporter.prom.port: 9249
+  log4j-console.properties: |+
+    rootLogger.level = INFO
+    rootLogger.appenderRef.console.ref = ConsoleAppender
+    rootLogger.appenderRef.rolling.ref = RollingFileAppender
+
+    #logger.flink.name = org.apache.flink
+    #logger.flink.level = INFO
+    
+    logger.akka.name = akka
+    logger.akka.level = INFO
+    logger.kafka.name= org.apache.kafka
+    logger.kafka.level = INFO
+    logger.hadoop.name = org.apache.hadoop
+    logger.hadoop.level = INFO
+    logger.zookeeper.name = org.apache.zookeeper
+    logger.zookeeper.level = INFO
+
+    appender.console.name = ConsoleAppender
+    appender.console.type = CONSOLE
+    appender.console.layout.type = PatternLayout
+    appender.console.layout.pattern = %d{yyyy-MM-dd HH:mm:ss,SSS} %-5p %-60c %x - %m%n
+
+    appender.rolling.name = RollingFileAppender
+    appender.rolling.type = RollingFile
+    appender.rolling.append = false
+    appender.rolling.fileName = $${TRICK_SYMBOLS_EMPTY}{sys:log.file}
+    appender.rolling.filePattern = $${TRICK_SYMBOLS_EMPTY}{sys:log.file}.%i
+    appender.rolling.layout.type = PatternLayout
+    appender.rolling.layout.pattern = %d{yyyy-MM-dd HH:mm:ss,SSS} %-5p %-60c %x - %m%n
+    appender.rolling.policies.type = Policies
+    appender.rolling.policies.size.type = SizeBasedTriggeringPolicy
+    appender.rolling.policies.size.size=100MB
+    appender.rolling.strategy.type = DefaultRolloverStrategy
+    appender.rolling.strategy.max = 10
+
+    logger.netty.name = org.jboss.netty.channel.DefaultChannelPipeline
+    logger.netty.level = OFF
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flink-tmp
+  namespace: ${BENCHMARK_NAMESPACE}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ${BENCHMARK_FLINK_PERSISTENCE_STORAGE_CLASS}
+  resources:
+    requests:
+      storage: ${BENCHMARK_FLINK_PERSISTENCE_SIZE}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flink-jobmanager
+  labels:
+    app: flink-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: rpc
+      port: 6123
+    - name: blob-server
+      port: 6124
+    - name: webui
+      port: 8081
+    - name: prom
+      port: 9249
+  selector:
+    app: flink
+    component: jobmanager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flink-jobmanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flink
+      component: jobmanager
+  template:
+    metadata:
+      labels:
+        app: flink
+        component: jobmanager
+        benchmark/system: kube-bench
+        benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
+    spec:
+      nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+      affinity: ${BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY}
+      containers:
+        - name: jobmanager
+          image: ghcr.io/risingwavelabs/flink-docker:${BENCHMARK_FLINK_IMAGE_TAG}
+          imagePullPolicy: Always
+          args: ["jobmanager"]
+          ports:
+            - containerPort: 6123
+              name: rpc
+            - containerPort: 6124
+              name: blob-server
+            - containerPort: 8081
+              name: webui
+            - containerPort: 9249
+              name: prom
+          livenessProbe:
+            tcpSocket:
+              port: 6123
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          volumeMounts:
+            - name: flink-config-volume
+              mountPath: /opt/flink/conf
+          securityContext:
+            runAsUser: 9999
+          resources:
+            requests:
+              cpu: ${BENCHMARK_FLINK_RESOURCES_CPU_REQUEST}
+              memory: ${BENCHMARK_FLINK_RESOURCES_MEM_REQUEST}
+            limits:
+              cpu: ${BENCHMARK_FLINK_RESOURCES_CPU_LIMIT}
+              memory: ${BENCHMARK_FLINK_RESOURCES_MEM_LIMIT}
+      volumes:
+        - name: flink-config-volume
+          configMap:
+            name: flink-config
+            items:
+              - key: flink-conf.yaml
+                path: flink-conf.yaml
+              - key: log4j-console.properties
+                path: log4j-console.properties
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flink-taskmanager
+  labels:
+    app: flink-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: rpc
+      port: 6122
+    - name: query-state
+      port: 6125
+    - name: prom
+      port: 9249
+  selector:
+    app: flink
+    component: taskmanager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flink-taskmanager
+spec:
+  replicas: ${BENCHMARK_FLINK_TASKMANAGER_REPLICAS}
+  selector:
+    matchLabels:
+      app: flink
+      component: taskmanager
+  template:
+    metadata:
+      labels:
+        app: flink
+        component: taskmanager
+        benchmark/system: kube-bench
+        benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
+    spec:
+      nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+      affinity: ${BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY}
+      initContainers:
+        - name: permissionsfix
+          image: alpine:latest
+          command: [ "/bin/sh", "-c" ]
+          args:
+            - chown 9999:9999 /opt/flink/tmp;
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /opt/flink/tmp
+      containers:
+        - name: taskmanager
+          image: ghcr.io/risingwavelabs/flink-docker:${BENCHMARK_FLINK_IMAGE_TAG}
+          imagePullPolicy: Always
+          args: ["taskmanager"]
+          ports:
+            - containerPort: 6122
+              name: rpc
+            - containerPort: 6125
+              name: query-state
+            - containerPort: 9249
+              name: prom
+          livenessProbe:
+            tcpSocket:
+              port: 6122
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          volumeMounts:
+            - name: flink-config-volume
+              mountPath: /opt/flink/conf
+            - name: tmp-dir
+              mountPath: /opt/flink/tmp
+          securityContext:
+            runAsUser: 9999
+          resources:
+            requests:
+              cpu: ${BENCHMARK_FLINK_RESOURCES_CPU_REQUEST}
+              memory: ${BENCHMARK_FLINK_RESOURCES_MEM_REQUEST}
+            limits:
+              cpu: ${BENCHMARK_FLINK_RESOURCES_CPU_LIMIT}
+              memory: ${BENCHMARK_FLINK_RESOURCES_MEM_LIMIT}
+      volumes:
+        - name: flink-config-volume
+          configMap:
+            name: flink-config
+            items:
+              - key: flink-conf.yaml
+                path: flink-conf.yaml
+              - key: log4j-console.properties
+                path: log4j-console.properties
+        - name: tmp-dir
+          persistentVolumeClaim:
+            claimName: flink-tmp
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flink-servicemonitor
+spec:
+  endpoints:
+    - port: prom
+      scheme: http
+    - port: flink-exporter
+      scheme: http
+      interval: 5s
+  jobLabel: jobLabel
+  selector:
+    matchLabels:
+      app: flink-service

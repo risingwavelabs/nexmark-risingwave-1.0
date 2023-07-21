@@ -1,0 +1,31 @@
+# One can list the possible values with
+#   helm show values bitnami/etcd
+
+auth:
+  rbac:
+    create: false
+    allowNoneAuthentication: true
+
+resources:
+  limits:
+    cpu: ${BENCHMARK_ETCD_RESOURCES_CPU_LIMIT}
+    memory: ${BENCHMARK_ETCD_RESOURCES_MEM_LIMIT}
+  requests:
+    cpu: ${BENCHMARK_ETCD_RESOURCES_CPU_REQUEST}
+    memory: ${BENCHMARK_ETCD_RESOURCES_MEM_REQUEST}
+
+persistence:
+  enabled: ${BENCHMARK_ETCD_PERSISTENCE_ENABLED}
+  storageClass: ${BENCHMARK_ETCD_PERSISTENCE_STORAGE_CLASS}
+
+podLabels:
+  benchmark/system: kube-bench
+  benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
+  benchmark/pod-affinity: etcd
+
+nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+
+affinity: ${BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY}
+
+metrics:
+  enabled: true

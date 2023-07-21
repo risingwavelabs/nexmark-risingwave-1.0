@@ -1,0 +1,91 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${BENCHMARK_JOB_NAME}
+  namespace: ${BENCHMARK_NAMESPACE}
+  labels:
+    benchmark/system: kube-bench
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        benchmark/system: kube-bench
+        benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
+    spec:
+      nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+      restartPolicy: Never
+      volumes:
+      - name: kafka-sources
+        configMap:
+          name: nexmark-kafka-sources-${BENCHMARK_JOB_NAME}
+      - name: views
+        configMap:
+          name: nexmark-materialized-views-${BENCHMARK_JOB_NAME}
+      - name: sinks
+        configMap:
+          name: nexmark-sinks-${BENCHMARK_JOB_NAME}
+      - name: eowc-sinks
+        configMap:
+          name: nexmark-eowc-sinks-${BENCHMARK_JOB_NAME}
+      initContainers:
+      - name: kafka-head20-msg
+        image: bitnami/kafka:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        args:
+        - -c
+        - |-
+          if ! ${BENCHMARK_NEXMARK_KAFKA_SEPARATE_TOPICS}; then
+            for ((i=0; i<${BENCHMARK_NEXMARK_KAFKA_PARTITION}; i++)); do
+              /opt/bitnami/kafka/bin/kafka-console-consumer.sh --bootstrap-server ${BENCHMARK_KAFKA_NAME}.${BENCHMARK_NAMESPACE}:9092 --topic nexmark-events --partition $${TRICK_SYMBOLS_EMPTY}{i} --from-beginning --max-messages 20;
+            done
+          fi
+      containers:
+      - name: start
+        image: postgres:latest
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: /nexmark/kafka-sources
+          name: kafka-sources
+          readOnly: true
+        - mountPath: /nexmark/views
+          name: views
+          readOnly: true
+        - mountPath: /nexmark/sinks
+          name: sinks
+          readOnly: true
+        - mountPath: /nexmark/eowc-sinks
+          name: eowc-sinks
+          readOnly: true
+        command:
+        - bash
+        args:
+        - -c
+        - |-
+          SET_WATERMARK=${TRICK_SYMBOLS_EMPTY}
+          if ${BENCHMARK_NEXMARK_KAFKA_WATERMARK}; then
+            SET_WATERMARK="_watermark"
+          fi
+          if ${BENCHMARK_NEXMARK_KAFKA_SEPARATE_TOPICS}; then 
+            psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/kafka-sources/create$${TRICK_SYMBOLS_EMPTY}{SET_WATERMARK}.sql;
+          else
+            psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/kafka-sources/create_combined$${TRICK_SYMBOLS_EMPTY}{SET_WATERMARK}.sql;
+          fi
+          SET_STATEMENT=""
+          if (($BENCHMARK_NEXMARK_STREAMING_PARALLELISM>0)); then
+            SET_STATEMENT="SET STREAMING_PARALLELISM=${BENCHMARK_NEXMARK_STREAMING_PARALLELISM};"
+          fi
+          IFS=',' read -ra QUERIES <<< "${BENCHMARK_NEXMARK_QUERY}"
+          for query in "$${TRICK_SYMBOLS_EMPTY}{QUERIES[@]}"; do
+            if ${BENCHMARK_NEXMARK_KAFKA_ENABLE_BLACKHOLE}; then 
+              if ${BENCHMARK_NEXMARK_KAFKA_WATERMARK}; then
+                psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/eowc-sinks/$${TRICK_SYMBOLS_EMPTY}{query}.sql;
+              else
+                psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/sinks/$${TRICK_SYMBOLS_EMPTY}{query}.sql;
+              fi
+            else
+              echo $${TRICK_SYMBOLS_EMPTY}{SET_STATEMENT} | cat - /nexmark/views/$${TRICK_SYMBOLS_EMPTY}{query}.sql | psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root;
+            fi
+          done

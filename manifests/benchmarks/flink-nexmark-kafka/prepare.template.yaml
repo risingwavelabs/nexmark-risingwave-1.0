@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${BENCHMARK_JOB_NAME}-prepare
+  namespace: ${BENCHMARK_NAMESPACE}
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        benchmark/system: kube-bench
+        benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
+    spec:
+      nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+      restartPolicy: Never
+      initContainers:
+        - name: kafka-prepare
+          image: bitnami/kafka:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+          args:
+            - -c
+            - |-
+              /opt/bitnami/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server ${BENCHMARK_KAFKA_NAME}.${BENCHMARK_NAMESPACE}:9092 --topic nexmark-events --partitions ${BENCHMARK_NEXMARK_KAFKA_PARTITION} --replication-factor 1;
+      containers:
+        - name: nexmark-bench
+          image: ghcr.io/risingwavelabs/nexmark-bench:${BENCHMARK_NEXMARK_KAFKA_IMAGE_TAG}
+          imagePullPolicy: ${BENCHMARK_NEXMARK_KAFKA_IMAGE_PULL_POLICY}
+          env:
+            - name: KAFKA_HOST
+              value: "${BENCHMARK_KAFKA_NAME}.${BENCHMARK_NAMESPACE}:9092"
+            - name: AUCTION_TOPIC
+              value: "nexmark-auction"
+            - name: BID_TOPIC
+              value: "nexmark-bid"
+            - name: PERSON_TOPIC
+              value: "nexmark-person"
+            - name: NUM_PARTITIONS
+              value: "${BENCHMARK_NEXMARK_KAFKA_PARTITION}"
+            - name: SEPARATE_TOPICS
+              value: "${BENCHMARK_NEXMARK_KAFKA_SEPARATE_TOPICS}"
+            - name: RUST_LOG
+              value: "nexmark_server=${BENCHMARK_NEXMARK_KAFKA_LOG_LEVEL}"
+          resources:
+            limits:
+              cpu: ${BENCHMARK_JOB_RESOURCES_CPU_LIMIT}
+              memory: ${BENCHMARK_JOB_RESOURCES_MEM_LIMIT}
+            requests:
+              cpu: ${BENCHMARK_JOB_RESOURCES_CPU_REQUEST}
+              memory: ${BENCHMARK_JOB_RESOURCES_MEM_REQUEST}
+          command:
+            - bash
+          args:
+            - -c
+            - |-
+              if ! ${BENCHMARK_NEXMARK_KAFKA_SKIP_INSERT_KAFKA}; then
+                /nexmark-bench/bin/nexmark-server --max-events=${BENCHMARK_NEXMARK_KAFKA_MAX_EVENTS} --num-event-generators=${BENCHMARK_NEXMARK_KAFKA_GENERATOR_THREAD_NUM} --event-rate=${BENCHMARK_NEXMARK_KAFKA_EVENT_RATE} --skip-event-types=${BENCHMARK_NEXMARK_KAFKA_SKIP_EVENT_TYPES}; 
+              fi

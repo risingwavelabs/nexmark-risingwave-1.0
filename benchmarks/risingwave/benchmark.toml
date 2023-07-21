@@ -1,0 +1,106 @@
+[benchmark]
+namespace = "risingwave"
+
+[benchmark.aws]
+ask_before_proceed = false
+
+[benchmark.aws.credentials]
+access_key = ""
+access_secret = ""
+
+[benchmark.job]
+type = "nexmark-kafka"
+name = "benchmark-job"
+
+[benchmark.job.resources]
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
+
+[benchmark.job.wait]
+retry_limit = 500
+retry_interval = 10
+
+[benchmark.pods.distribution]
+mutual_exclusive_policy = "global"
+mutual_exclusive_key = ""
+compactor_compute_affinity_enabled = "true"
+
+[benchmark.nexmark]
+query = "q0"
+
+[benchmark.nexmark_kafka]
+max_events = 2000000000
+generator_thread_num = 8
+event_rate = 1000000
+partition = 8
+keep_kafka_data = true
+skip_insert_kafka = false
+image_pull_policy = "Always"
+enable_blackhole = "true"
+watermark = false
+
+[benchmark.risingwave]
+version = "nightly-20230718"
+
+[benchmark.risingwave.wait]
+retry_limit = 60
+retry_interval = 10
+
+[benchmark.risingwave.replicas]
+meta = 1
+frontend = 1
+compute = 1
+compactor = 1
+connector = 0
+
+[benchmark.risingwave.resources.compactor]
+cpu = { limit = "8", request = "0" }
+mem = { limit = "2Gi", request = "0Gi" }
+
+[benchmark.risingwave.resources.compute]
+cpu = { limit = "8", request = "7" }
+mem = { limit = "13Gi", request = "13Gi" }
+
+[benchmark.risingwave.compute.memory_profiling]
+enable = "false"
+lg_prof_interval = 40
+lg_prof_sample = 19
+
+[benchmark.risingwave.storage]
+type = "s3"
+
+[benchmark.risingwave.storage.s3]
+region = "us-east-1"
+access_key = ""
+access_secret = ""
+bucket = "risingwave"
+data_directory = "hummock_001"
+
+[benchmark.s3.bucket]
+create_enabled = true
+delete_enabled = true
+
+[benchmark.etcd.resources]
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
+
+[benchmark.kafka]
+enabled = true
+keep_pod_enabled = true
+
+[benchmark.kafka.resources]
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
+
+[benchmark.kafka.persistence]
+enabled = true
+storage_class = "gp2"
+size = "500Gi"
+
+[benchmark.kafka.zookeeper.persistence]
+enabled = true
+storage_class = ""
+
+[benchmark.kafka.metrics]
+jmx_enabled = true
+servicemonitor_enabled = true
