@@ -211,7 +211,7 @@ EOF
        "namespaceSelector": {},
        "labelSelector": {
          "matchLabels": {
-           "benchmark/system": "nexmark-risingwave",
+           "benchmark/system": "kube-bench",
            "benchmark/mutual-exclusive-key": "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
          }
        }
@@ -234,7 +234,7 @@ EOF
        "namespaceSelector": {},
        "labelSelector": {
          "matchLabels": {
-           "benchmark/system": "nexmark-risingwave",
+           "benchmark/system": "kube-bench",
            "benchmark/mutual-exclusive-key": "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
          }
        }

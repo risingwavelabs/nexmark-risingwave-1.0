@@ -4,7 +4,7 @@ metadata:
   name: ${BENCHMARK_RISINGWAVE_NAME}-node-envs
   namespace: ${BENCHMARK_NAMESPACE}
   labels:
-    benchmark/system: nexmark-risingwave
+    benchmark/system: kube-bench
 stringData: ${BENCHMARK_RISINGWAVE_GEN_NODE_ENVS}
 ---
 apiVersion: risingwave.risingwavelabs.com/v1alpha1
@@ -13,7 +13,7 @@ metadata:
   name: ${BENCHMARK_RISINGWAVE_NAME}
   namespace: ${BENCHMARK_NAMESPACE}
   labels:
-    benchmark/system: nexmark-risingwave
+    benchmark/system: kube-bench
 spec:
   enableDefaultServiceMonitor: true
   metaStore: ${BENCHMARK_RISINGWAVE_META_STORE_SPEC}
@@ -78,7 +78,7 @@ spec:
         template:
           metadata:
             labels:
-              benchmark/system: nexmark-risingwave
+              benchmark/system: kube-bench
               benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
               benchmark/pod-affinity: compactor
           spec:

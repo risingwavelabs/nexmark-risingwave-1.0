@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
   name: "${BENCHMARK_NAMESPACE}"
   labels:
-    benchmark/system: nexmark-risingwave
+    benchmark/system: kube-bench

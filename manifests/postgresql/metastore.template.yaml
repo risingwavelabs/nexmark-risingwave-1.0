@@ -33,7 +33,7 @@ primary:
     size: ${BENCHMARK_POSTGRESQL_METASTORE_PERSISTENCE_SIZE}
 
   podLabels:
-    benchmark/system: nexmark-risingwave
+    benchmark/system: kube-bench
     benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
     benchmark/pod-affinity: metastore
 
