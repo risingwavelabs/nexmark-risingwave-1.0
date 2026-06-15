@@ -58,8 +58,9 @@ Use the RisingWave override file:
 export BENCHMARK_ENV_OVERRIDE=benchmarks/risingwave/benchmark.toml
 ```
 
-The default override is a benchmark-sized run. It deploys PostgreSQL and MinIO inside the benchmark namespace, so it does
-not require cloud object-store credentials. The sample uses RisingWave `v3.0.0` with PostgreSQL-backed metadata.
+The RisingWave override is a benchmark-scale profile for a provisioned cluster. It deploys PostgreSQL and MinIO inside
+the benchmark namespace, so it does not require cloud object-store credentials. The sample uses RisingWave `v3.0.0` with
+PostgreSQL-backed metadata.
 
 ```toml
 [benchmark.risingwave]

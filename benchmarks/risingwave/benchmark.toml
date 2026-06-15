@@ -89,7 +89,7 @@ mem = { limit = "16Gi", request = "13Gi" }
 [benchmark.postgresql.metastore.persistence]
 enabled = true
 storage_class = ""
-size = "500Gi"
+size = "500Gi" # Benchmark-scale profile; reduce this in a local override for smaller clusters.
 
 [benchmark.minio.resources]
 cpu = { limit = "8", request = "7" }
@@ -98,7 +98,7 @@ mem = { limit = "16Gi", request = "13Gi" }
 [benchmark.minio.persistence]
 enabled = true
 storage_class = ""
-size = "500Gi"
+size = "500Gi" # Benchmark-scale profile; reduce this in a local override for smaller clusters.
 
 [benchmark.kafka]
 enabled = true

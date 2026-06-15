@@ -44,7 +44,6 @@ QUERIES="$(yq '.data | keys' <"$QUERY_FILE" | sed 's/^- //')"
 for QUERY in $QUERIES; do
   OUTPATH="$OUTPUT_DIR/$QUERY"
   echo "$OUTPATH"
-  QUOTED_QUERY="\"$QUERY\""
-  QUERY_SQL="$(QUERY=$QUOTED_QUERY yq '.data | .[env(QUERY)]' <"$QUERY_FILE")"
+  QUERY_SQL="$(QUERY=$QUERY yq '.data | .[env(QUERY)]' <"$QUERY_FILE")"
   echo "$QUERY_SQL" > "$OUTPATH"
 done

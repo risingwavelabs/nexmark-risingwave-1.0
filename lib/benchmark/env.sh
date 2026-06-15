@@ -178,6 +178,11 @@ EOF
     BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR=$(args::convert_key_value_pairs_to_json "${BENCHMARK_PODS_DISTRIBUTION_NODE_SELECTORS}")
     export BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR
 
+    local frontend_meta_affinity_label="etcd"
+    if [[ "${BENCHMARK_RISINGWAVE_META_STORE}" == "postgresql" ]]; then
+      frontend_meta_affinity_label="metastore"
+    fi
+
     # shellcheck disable=SC2155
     export BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY_FRONTEND_META=$(
       cat <<EOF | jq -c
@@ -188,7 +193,7 @@ EOF
        "topologyKey": "kubernetes.io/hostname",
        "labelSelector": {
          "matchLabels": {
-           "benchmark/pod-affinity": "etcd"
+           "benchmark/pod-affinity": "${frontend_meta_affinity_label}"
          }
        }
      }

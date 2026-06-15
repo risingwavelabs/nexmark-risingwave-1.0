@@ -114,7 +114,7 @@ function tests::task::run_config_smoke() {
       grep -q "repository: bitnamilegacy/kafka" "${render_dir}/kafka-values.yaml"
       grep -q "protocol: PLAINTEXT" "${render_dir}/kafka-values.yaml"
       if grep -q "SASL" "${render_dir}/kafka-values.yaml"; then
-        return 1
+        exit 1
       fi
 
       case "${BENCHMARK_SYSTEM}" in
@@ -129,6 +129,11 @@ function tests::task::run_config_smoke() {
         grep -q '"minio":' "${render_dir}/risingwave.yaml"
         grep -q '"bucket":"hummock"' "${render_dir}/risingwave.yaml"
         grep -q "name: default" "${render_dir}/risingwave.yaml"
+
+        BENCHMARK_PODS_DISTRIBUTION_NODE_SELECTORS="node-group:benchmark"
+        benchmark::env::overrides
+        "${A8M_ENVSUBST_BIN}" -no-unset <"${ROOT_PATH}/manifests/risingwave/risingwave.template.yaml" >"${render_dir}/risingwave-affinity.yaml"
+        grep -q '"benchmark/pod-affinity":"metastore"' "${render_dir}/risingwave-affinity.yaml"
 
         "${A8M_ENVSUBST_BIN}" -no-unset <"${ROOT_PATH}/manifests/minio/values.template.yaml" >"${render_dir}/minio-values.yaml"
         "${A8M_ENVSUBST_BIN}" -no-unset <"${ROOT_PATH}/manifests/postgresql/metastore.template.yaml" >"${render_dir}/postgresql-values.yaml"
@@ -148,7 +153,7 @@ function tests::task::run_config_smoke() {
         ;;
       *)
         logging::error "Invalid smoke system: ${BENCHMARK_SYSTEM}"
-        return 1
+        exit 1
         ;;
       esac
     )
