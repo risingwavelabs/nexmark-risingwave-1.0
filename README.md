@@ -73,6 +73,45 @@ bucket = "hummock"
 data_directory = "hummock_001"
 ```
 
+### Use AWS S3 Instead Of MinIO
+
+MinIO is only the default local smoke path. To run RisingWave with AWS S3 state storage, set the storage type to `s3`
+and provide the S3 bucket, region, and credentials in the override file:
+
+```toml
+[benchmark.aws]
+# Set to true if you want an interactive confirmation before bucket create/delete.
+ask_before_proceed = false
+
+[benchmark.risingwave.storage]
+type = "s3"
+
+[benchmark.risingwave.storage.s3]
+region = "us-east-1"
+bucket = "my-risingwave-benchmark-bucket"
+data_directory = "hummock_001"
+access_key = "$$env(AWS_ACCESS_KEY_ID)"
+access_secret = "$$env(AWS_SECRET_ACCESS_KEY)"
+```
+
+Use an existing bucket by leaving bucket lifecycle disabled:
+
+```toml
+[benchmark.s3.bucket]
+create_enabled = false
+delete_enabled = false
+```
+
+Or let the runner create and delete the bucket for a disposable test:
+
+```toml
+[benchmark.s3.bucket]
+create_enabled = true
+delete_enabled = true
+```
+
+When `type = "s3"`, the runner creates the RisingWave S3 credentials secret and does not deploy MinIO.
+
 ### Configure Test Parameters
 
 The runner loads `env.toml` plus one override file. If `BENCHMARK_ENV_OVERRIDE` is set, that file is used as the
