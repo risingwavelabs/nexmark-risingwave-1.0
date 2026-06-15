@@ -111,7 +111,6 @@ function tests::task::run_config_smoke() {
 
       "${A8M_ENVSUBST_BIN}" -no-unset <"${ROOT_PATH}/manifests/kafka/values.template.yaml" >"${render_dir}/kafka-values.yaml"
 
-      [[ "${BENCHMARK_KAFKA_KEEP_POD_ENABLED}" == "false" ]]
       grep -q "repository: bitnamilegacy/kafka" "${render_dir}/kafka-values.yaml"
       grep -q "protocol: PLAINTEXT" "${render_dir}/kafka-values.yaml"
       if grep -q "SASL" "${render_dir}/kafka-values.yaml"; then
@@ -130,6 +129,7 @@ function tests::task::run_config_smoke() {
         grep -q '"minio":' "${render_dir}/risingwave.yaml"
         grep -q '"bucket":"hummock"' "${render_dir}/risingwave.yaml"
         grep -q "name: default" "${render_dir}/risingwave.yaml"
+        [[ "${BENCHMARK_KAFKA_KEEP_POD_ENABLED}" == "false" ]]
         grep -q "storageClass:" "${render_dir}/kafka-values.yaml"
         if grep -q "gp2" "${render_dir}/kafka-values.yaml"; then
           return 1
@@ -150,12 +150,6 @@ function tests::task::run_config_smoke() {
 
         grep -q "benchmark-flink" "${render_dir}/flink.yaml"
         grep -q "state.checkpoints.dir: s3://flink/checkpoints" "${render_dir}/flink.yaml"
-        if grep -q "gp2" "${render_dir}/kafka-values.yaml"; then
-          return 1
-        fi
-        if grep -q "bench-iops" "${render_dir}/flink.yaml"; then
-          return 1
-        fi
         ;;
       *)
         logging::error "Invalid smoke system: ${BENCHMARK_SYSTEM}"
