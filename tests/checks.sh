@@ -129,6 +129,7 @@ function tests::task::run_config_smoke() {
         grep -q '"minio":' "${render_dir}/risingwave.yaml"
         grep -q '"bucket":"hummock"' "${render_dir}/risingwave.yaml"
         grep -q "name: default" "${render_dir}/risingwave.yaml"
+        grep -q "connector:" "${render_dir}/risingwave.yaml"
 
         BENCHMARK_PODS_DISTRIBUTION_NODE_SELECTORS="node-group:benchmark"
         benchmark::env::overrides
