@@ -1,0 +1,96 @@
+[benchmark]
+namespace = "benchmark-risingwave-smoke"
+
+[benchmark.aws]
+ask_before_proceed = false
+
+[benchmark.job]
+type = "nexmark-kafka"
+name = "benchmark-job"
+
+[benchmark.job.resources]
+cpu = { limit = "1", request = "500m" }
+mem = { limit = "1Gi", request = "512Mi" }
+
+[benchmark.job.wait]
+retry_limit = 120
+retry_interval = 5
+
+[benchmark.nexmark]
+query = "q0"
+
+[benchmark.nexmark_kafka]
+max_events = 10000
+generator_thread_num = 1
+event_rate = 1000
+partition = 1
+keep_kafka_data = false
+skip_insert_kafka = false
+image_pull_policy = "IfNotPresent"
+enable_blackhole = false
+watermark = false
+
+[benchmark.risingwave]
+version = "v3.0.0"
+meta_store = "postgresql"
+
+[benchmark.risingwave.wait]
+retry_limit = 60
+retry_interval = 5
+
+[benchmark.risingwave.replicas]
+meta = 1
+frontend = 1
+compute = 1
+compactor = 1
+
+[benchmark.risingwave.resources]
+cpu = { limit = "1", request = "250m" }
+mem = { limit = "2Gi", request = "512Mi" }
+
+[benchmark.risingwave.storage]
+type = "minio"
+
+[benchmark.risingwave.storage.minio]
+bucket = "hummock"
+data_directory = "hummock_smoke"
+
+[benchmark.postgresql.metastore.resources]
+cpu = { limit = "1", request = "250m" }
+mem = { limit = "2Gi", request = "512Mi" }
+
+[benchmark.postgresql.metastore.persistence]
+enabled = true
+storage_class = ""
+size = "8Gi"
+
+[benchmark.minio.resources]
+cpu = { limit = "1", request = "250m" }
+mem = { limit = "2Gi", request = "512Mi" }
+
+[benchmark.minio.persistence]
+enabled = true
+storage_class = ""
+size = "8Gi"
+
+[benchmark.kafka]
+enabled = true
+keep_pod_enabled = false
+
+[benchmark.kafka.resources]
+cpu = { limit = "1", request = "250m" }
+mem = { limit = "2Gi", request = "512Mi" }
+
+[benchmark.kafka.persistence]
+enabled = true
+storage_class = ""
+size = "8Gi"
+
+[benchmark.kafka.zookeeper.persistence]
+enabled = true
+storage_class = ""
+
+[benchmark.kafka.metrics]
+kafka_enabled = false
+jmx_enabled = false
+servicemonitor_enabled = false

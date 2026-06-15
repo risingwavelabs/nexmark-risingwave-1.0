@@ -12,6 +12,7 @@ A8M_ENVSUBST_BIN=${BINARY_PATH}/envsubst
 ENV_FILE=${ROOT_PATH}/env.toml
 SMOKE_CONFIG_FILES=(
   "${ROOT_PATH}/benchmarks/risingwave/benchmark.toml"
+  "${ROOT_PATH}/benchmarks/risingwave/smoke.toml"
   "${ROOT_PATH}/benchmarks/flink/benchmark.toml"
 )
 
@@ -129,7 +130,15 @@ function tests::task::run_config_smoke() {
         grep -q '"minio":' "${render_dir}/risingwave.yaml"
         grep -q '"bucket":"hummock"' "${render_dir}/risingwave.yaml"
         grep -q "name: default" "${render_dir}/risingwave.yaml"
-        grep -q "connector:" "${render_dir}/risingwave.yaml"
+        if grep -q "^    connector:" "${render_dir}/risingwave.yaml"; then
+          exit 1
+        fi
+
+        if [[ "${config_file}" == "${ROOT_PATH}/benchmarks/risingwave/smoke.toml" ]]; then
+          grep -q -- "--max-events=10000" "${render_dir}/prepare.yaml"
+          grep -q -- "--num-event-generators=1" "${render_dir}/prepare.yaml"
+          grep -q -- "--event-rate=1000" "${render_dir}/prepare.yaml"
+        fi
 
         BENCHMARK_PODS_DISTRIBUTION_NODE_SELECTORS="node-group:benchmark"
         benchmark::env::overrides

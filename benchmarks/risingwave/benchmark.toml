@@ -52,7 +52,6 @@ meta = 1
 frontend = 1
 compute = 1
 compactor = 1
-connector = 0
 
 [benchmark.risingwave.resources]
 cpu = { limit = "8", request = "7" }

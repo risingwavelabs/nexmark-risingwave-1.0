@@ -74,6 +74,19 @@ bucket = "hummock"
 data_directory = "hummock_001"
 ```
 
+### Small Smoke Profile
+
+Use the smoke override for a quick local validation run with the same PostgreSQL metadata and MinIO state-store path but
+smaller workload and resource settings:
+
+```shell
+export BENCHMARK_ENV_OVERRIDE=benchmarks/risingwave/smoke.toml
+```
+
+The smoke profile runs `q0` with `10000` generated Kafka events, one generator thread, one Kafka partition, smaller pod
+resources, and `8Gi` PostgreSQL/MinIO/Kafka PVCs. It is intended for validating the lifecycle, not for performance
+numbers.
+
 ### Use AWS S3 Instead Of MinIO
 
 MinIO is the default local object-store path. To run RisingWave with AWS S3 state storage, set the storage type to `s3`
@@ -165,7 +178,6 @@ meta = 1
 frontend = 1
 compute = 2
 compactor = 1
-connector = 0
 ```
 
 Set the default RisingWave component resource request and limit with:
