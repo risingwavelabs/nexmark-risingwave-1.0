@@ -47,8 +47,8 @@ function tests::env::initialize() {
 }
 
 function tests::task::tracked_template_files() {
-  if git -C "${ROOT_PATH}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    git -C "${ROOT_PATH}" ls-files --cached --others --exclude-standard "manifests/**/*.template.yaml"
+  if command -v git >/dev/null 2>&1 && git -C "${ROOT_PATH}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git -C "${ROOT_PATH}" ls-files --cached --others --exclude-standard -- "manifests/**/*.template.yaml"
   else
     find "${MANIFESTS_DIR}" -name "*.template.yaml" -type f | sed "s#^${ROOT_PATH}/##"
   fi
