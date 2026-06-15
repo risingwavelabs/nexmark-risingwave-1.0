@@ -20,10 +20,18 @@ tomlenv: ${TOMLENV_TARGET_BINARY}
 
 .PHONY: shellcheck
 shellcheck:
-	@bash -c 'files=$$(git ls-files "*.sh"); \
-		if command -v shellcheck >/dev/null 2>&1; then \
-			shellcheck -x -e SC1091 -s bash $$files; \
-		elif command -v docker >/dev/null 2>&1; then \
+	@bash -c 'if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+				files=$$(git ls-files -- "*.sh"); \
+			else \
+				files=$$(find . -path "./.git" -prune -o -name "*.sh" -type f -print); \
+			fi; \
+			if [[ -z "$$files" ]]; then \
+				echo "no shell scripts found"; \
+				exit 1; \
+			fi; \
+			if command -v shellcheck >/dev/null 2>&1; then \
+				shellcheck -x -e SC1091 -s bash $$files; \
+			elif command -v docker >/dev/null 2>&1; then \
 			docker run --rm -v "$$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x -e SC1091 -s bash $$files; \
 		else \
 			echo "shellcheck is required; install shellcheck or Docker."; \

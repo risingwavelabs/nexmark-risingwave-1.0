@@ -39,11 +39,9 @@ fi
 
 mkdir -p "${OUTPUT_DIR}"
 
-QUERIES="$(yq '.data | keys' <"$QUERY_FILE" | sed 's/^- //')"
-
-for QUERY in $QUERIES; do
+while IFS= read -r QUERY; do
   OUTPATH="$OUTPUT_DIR/$QUERY"
   echo "$OUTPATH"
   QUERY_SQL="$(QUERY=$QUERY yq '.data | .[env(QUERY)]' <"$QUERY_FILE")"
   echo "$QUERY_SQL" > "$OUTPATH"
-done
+done < <(yq -r '.data | keys | .[]' <"$QUERY_FILE")
