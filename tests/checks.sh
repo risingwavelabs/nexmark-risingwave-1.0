@@ -129,11 +129,6 @@ function tests::task::run_config_smoke() {
         grep -q '"minio":' "${render_dir}/risingwave.yaml"
         grep -q '"bucket":"hummock"' "${render_dir}/risingwave.yaml"
         grep -q "name: default" "${render_dir}/risingwave.yaml"
-        [[ "${BENCHMARK_KAFKA_KEEP_POD_ENABLED}" == "false" ]]
-        grep -q "storageClass:" "${render_dir}/kafka-values.yaml"
-        if grep -q "gp2" "${render_dir}/kafka-values.yaml"; then
-          return 1
-        fi
 
         "${A8M_ENVSUBST_BIN}" -no-unset <"${ROOT_PATH}/manifests/minio/values.template.yaml" >"${render_dir}/minio-values.yaml"
         "${A8M_ENVSUBST_BIN}" -no-unset <"${ROOT_PATH}/manifests/postgresql/metastore.template.yaml" >"${render_dir}/postgresql-values.yaml"

@@ -2,7 +2,7 @@
 
 This repository is a Kubernetes runner for the Nexmark benchmark on RisingWave 1.0 and Apache Flink.
 
-The default RisingWave sample is a small smoke-sized run using:
+The default RisingWave benchmark configuration uses:
 
 - PostgreSQL as the RisingWave meta store.
 - MinIO as the RisingWave state store.
@@ -58,7 +58,7 @@ Use the RisingWave override file:
 export BENCHMARK_ENV_OVERRIDE=benchmarks/risingwave/benchmark.toml
 ```
 
-The default override is a small smoke-sized run. It deploys PostgreSQL and MinIO inside the benchmark namespace, so it does
+The default override is a benchmark-sized run. It deploys PostgreSQL and MinIO inside the benchmark namespace, so it does
 not require cloud object-store credentials. The sample uses RisingWave `v3.0.0` with PostgreSQL-backed metadata.
 
 ```toml
@@ -150,6 +150,9 @@ keep_kafka_data = true
 
 Use `skip_insert_kafka = false` for a fresh data generation run. Use `keep_kafka_data = false` when you want `clean` to
 delete benchmark topics.
+
+For a quick smoke test, lower `max_events`, `event_rate`, `generator_thread_num`, `partition`, and the relevant resource
+requests in the same override file.
 
 ### Configure RisingWave Resources
 

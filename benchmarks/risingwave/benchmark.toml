@@ -13,8 +13,8 @@ type = "nexmark-kafka"
 name = "benchmark-job"
 
 [benchmark.job.resources]
-cpu = { limit = "1", request = "500m" }
-mem = { limit = "1Gi", request = "512Mi" }
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
 
 [benchmark.job.wait]
 retry_limit = 500
@@ -29,14 +29,14 @@ compactor_compute_affinity_enabled = "true"
 query = "q0"
 
 [benchmark.nexmark_kafka]
-max_events = 10000
-generator_thread_num = 4
-event_rate = 1000
-partition = 1
-keep_kafka_data = false
+max_events = 2000000000
+generator_thread_num = 8
+event_rate = 1000000
+partition = 8
+keep_kafka_data = true
 skip_insert_kafka = false
-image_pull_policy = "IfNotPresent"
-enable_blackhole = "false"
+image_pull_policy = "Always"
+enable_blackhole = "true"
 watermark = false
 
 [benchmark.risingwave]
@@ -55,16 +55,16 @@ compactor = 1
 connector = 0
 
 [benchmark.risingwave.resources]
-cpu = { limit = "1", request = "500m" }
-mem = { limit = "2Gi", request = "1Gi" }
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
 
 [benchmark.risingwave.resources.compactor]
-cpu = { limit = "1", request = "100m" }
-mem = { limit = "1Gi", request = "256Mi" }
+cpu = { limit = "8", request = "0" }
+mem = { limit = "2Gi", request = "0Gi" }
 
 [benchmark.risingwave.resources.compute]
-cpu = { limit = "2", request = "500m" }
-mem = { limit = "2Gi", request = "1Gi" }
+cpu = { limit = "8", request = "7" }
+mem = { limit = "13Gi", request = "13Gi" }
 
 [benchmark.risingwave.compute.memory_profiling]
 enable = "false"
@@ -79,44 +79,44 @@ bucket = "hummock"
 data_directory = "hummock_001"
 
 [benchmark.etcd.resources]
-cpu = { limit = "1", request = "100m" }
-mem = { limit = "1Gi", request = "256Mi" }
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
 
 [benchmark.postgresql.metastore.resources]
-cpu = { limit = "1", request = "100m" }
-mem = { limit = "1Gi", request = "256Mi" }
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
 
 [benchmark.postgresql.metastore.persistence]
 enabled = true
 storage_class = ""
-size = "8Gi"
+size = "500Gi"
 
 [benchmark.minio.resources]
-cpu = { limit = "1", request = "100m" }
-mem = { limit = "1Gi", request = "256Mi" }
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
 
 [benchmark.minio.persistence]
 enabled = true
 storage_class = ""
-size = "8Gi"
+size = "500Gi"
 
 [benchmark.kafka]
 enabled = true
-keep_pod_enabled = false
+keep_pod_enabled = true
 
 [benchmark.kafka.resources]
-cpu = { limit = "1", request = "500m" }
-mem = { limit = "1Gi", request = "512Mi" }
+cpu = { limit = "8", request = "7" }
+mem = { limit = "16Gi", request = "13Gi" }
 
 [benchmark.kafka.persistence]
 enabled = true
-storage_class = ""
-size = "8Gi"
+storage_class = "gp2"
+size = "500Gi"
 
 [benchmark.kafka.zookeeper.persistence]
 enabled = true
 storage_class = ""
 
 [benchmark.kafka.metrics]
-jmx_enabled = false
-servicemonitor_enabled = false
+jmx_enabled = true
+servicemonitor_enabled = true
