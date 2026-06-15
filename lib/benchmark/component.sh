@@ -7,11 +7,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/runtime.sh"
 #######################################
 # Test if etcd is enabled.
 # Globals
-#   None
+#   BENCHMARK_RISINGWAVE_META_STORE
 # Arguments
 #   None
 # Returns
-#   0
+#   0 when the configured RisingWave meta store is etcd, 1 otherwise.
 #######################################
 function benchmark::component::etcd::enabled() {
   [[ "${BENCHMARK_RISINGWAVE_META_STORE}" == "etcd" ]]
