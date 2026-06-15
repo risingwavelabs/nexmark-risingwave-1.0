@@ -16,7 +16,7 @@ check: tomlenv
 
 .PHONY: tomlenv
 tomlenv: ${TOMLENV_TARGET_BINARY}
-	 @${TOMLENV_TARGET_BINARY} env.toml > last.run
+	@${TOMLENV_TARGET_BINARY} env.toml > last.run
 
 .PHONY: shellcheck
 shellcheck:

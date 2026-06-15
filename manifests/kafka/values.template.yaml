@@ -22,7 +22,7 @@ listeners:
 
 deleteTopicEnable: true
 
-logRetentionBytes: _${BENCHMARK_KAFKA_LOG_RETENTION_BYTES}
+logRetentionBytes: ${BENCHMARK_KAFKA_LOG_RETENTION_BYTES}
 
 logRetentionHours: ${BENCHMARK_KAFKA_LOG_RETENTION_HOURS}
 

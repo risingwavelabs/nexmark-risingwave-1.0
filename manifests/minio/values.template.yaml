@@ -13,11 +13,11 @@ clientImage:
   registry: docker.io
   repository: bitnamilegacy/minio-client
 
-defaultBuckets: ${BENCHMARK_RISINGWAVE_STORAGE_MINIO_BUCKET}
+defaultBuckets: "${BENCHMARK_RISINGWAVE_STORAGE_MINIO_BUCKET}"
 
 auth:
-  rootUser: ${BENCHMARK_MINIO_CREDENTIALS_0_USERNAME}
-  rootPassword: ${BENCHMARK_MINIO_CREDENTIALS_0_PASSWORD}
+  rootUser: "${BENCHMARK_MINIO_CREDENTIALS_0_USERNAME}"
+  rootPassword: "${BENCHMARK_MINIO_CREDENTIALS_0_PASSWORD}"
 
 resources:
   limits:
