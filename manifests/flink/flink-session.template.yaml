@@ -186,7 +186,7 @@ spec:
       labels:
         app: flink
         component: jobmanager
-        benchmark/system: kube-bench
+        benchmark/system: nexmark-risingwave
         benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
     spec:
       nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
@@ -266,7 +266,7 @@ spec:
       labels:
         app: flink
         component: taskmanager
-        benchmark/system: kube-bench
+        benchmark/system: nexmark-risingwave
         benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
     spec:
       nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}

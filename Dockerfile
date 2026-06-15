@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -a -o tomlenv main.go
 
 FROM ubuntu:22.04
 
-WORKDIR /kube-bench
+WORKDIR /nexmark-risingwave
 
 ARG TARGETARCH
 RUN apt update && apt install curl gettext-base vim postgresql-client less coreutils unzip git jq python3-pip apt-transport-https ca-certificates gnupg -y && rm -rf /var/lib/apt/lists/* && \

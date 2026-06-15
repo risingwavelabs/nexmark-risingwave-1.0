@@ -4,13 +4,13 @@ metadata:
   name: ${BENCHMARK_JOB_NAME}
   namespace: ${BENCHMARK_NAMESPACE}
   labels:
-    benchmark/system: kube-bench
+    benchmark/system: nexmark-risingwave
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        benchmark/system: kube-bench
+        benchmark/system: nexmark-risingwave
         benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
     spec:
       nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
@@ -30,7 +30,7 @@ spec:
           name: nexmark-eowc-sinks-${BENCHMARK_JOB_NAME}
       initContainers:
       - name: kafka-head20-msg
-        image: bitnami/kafka:latest
+        image: ${BENCHMARK_KAFKA_IMAGE_REGISTRY}/${BENCHMARK_KAFKA_IMAGE_REPOSITORY}:${BENCHMARK_KAFKA_IMAGE_TAG}
         imagePullPolicy: IfNotPresent
         command:
         - bash
@@ -69,9 +69,9 @@ spec:
             SET_WATERMARK="_watermark"
           fi
           if ${BENCHMARK_NEXMARK_KAFKA_SEPARATE_TOPICS}; then 
-            psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/kafka-sources/create$${TRICK_SYMBOLS_EMPTY}{SET_WATERMARK}.sql;
+            psql -v ON_ERROR_STOP=1 -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/kafka-sources/create$${TRICK_SYMBOLS_EMPTY}{SET_WATERMARK}.sql;
           else
-            psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/kafka-sources/create_combined$${TRICK_SYMBOLS_EMPTY}{SET_WATERMARK}.sql;
+            psql -v ON_ERROR_STOP=1 -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/kafka-sources/create_combined$${TRICK_SYMBOLS_EMPTY}{SET_WATERMARK}.sql;
           fi
           SET_STATEMENT=""
           if (($BENCHMARK_NEXMARK_STREAMING_PARALLELISM>0)); then
@@ -81,11 +81,11 @@ spec:
           for query in "$${TRICK_SYMBOLS_EMPTY}{QUERIES[@]}"; do
             if ${BENCHMARK_NEXMARK_KAFKA_ENABLE_BLACKHOLE}; then 
               if ${BENCHMARK_NEXMARK_KAFKA_WATERMARK}; then
-                psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/eowc-sinks/$${TRICK_SYMBOLS_EMPTY}{query}.sql;
+                psql -v ON_ERROR_STOP=1 -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/eowc-sinks/$${TRICK_SYMBOLS_EMPTY}{query}.sql;
               else
-                psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/sinks/$${TRICK_SYMBOLS_EMPTY}{query}.sql;
+                psql -v ON_ERROR_STOP=1 -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root < /nexmark/sinks/$${TRICK_SYMBOLS_EMPTY}{query}.sql;
               fi
             else
-              echo $${TRICK_SYMBOLS_EMPTY}{SET_STATEMENT} | cat - /nexmark/views/$${TRICK_SYMBOLS_EMPTY}{query}.sql | psql -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root;
+              echo $${TRICK_SYMBOLS_EMPTY}{SET_STATEMENT} | cat - /nexmark/views/$${TRICK_SYMBOLS_EMPTY}{query}.sql | psql -v ON_ERROR_STOP=1 -h ${BENCHMARK_RISINGWAVE_NAME}-frontend.${BENCHMARK_NAMESPACE} -p 4567 -d dev -U root;
             fi
           done

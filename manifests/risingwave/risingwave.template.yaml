@@ -4,7 +4,7 @@ metadata:
   name: ${BENCHMARK_RISINGWAVE_NAME}-node-envs
   namespace: ${BENCHMARK_NAMESPACE}
   labels:
-    benchmark/system: kube-bench
+    benchmark/system: nexmark-risingwave
 stringData: ${BENCHMARK_RISINGWAVE_GEN_NODE_ENVS}
 ---
 apiVersion: risingwave.risingwavelabs.com/v1alpha1
@@ -13,12 +13,10 @@ metadata:
   name: ${BENCHMARK_RISINGWAVE_NAME}
   namespace: ${BENCHMARK_NAMESPACE}
   labels:
-    benchmark/system: kube-bench
+    benchmark/system: nexmark-risingwave
 spec:
   enableDefaultServiceMonitor: true
-  metaStore:
-    etcd:
-      endpoint: "${BENCHMARK_ETCD_NAME}.${BENCHMARK_NAMESPACE}:2379"
+  metaStore: ${BENCHMARK_RISINGWAVE_META_STORE_SPEC}
   stateStore: ${BENCHMARK_RISINGWAVE_STORAGE_GEN_OBJECTS}
   configuration:
     configMap:
@@ -34,6 +32,13 @@ spec:
           type: Recreate
         template:
           spec:
+            resources:
+              limits:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_FRONTEND_CPU_LIMIT}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_FRONTEND_MEM_LIMIT}
+              requests:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_FRONTEND_CPU_REQUEST}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_FRONTEND_MEM_REQUEST}
             envFrom:
             - secretRef:
                 name: ${BENCHMARK_RISINGWAVE_NAME}-node-envs
@@ -50,6 +55,13 @@ spec:
           spec:
             nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
             affinity: ${BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY_FRONTEND_META}
+            resources:
+              limits:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_META_CPU_LIMIT}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_META_MEM_LIMIT}
+              requests:
+                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_META_CPU_REQUEST}
+                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_META_MEM_REQUEST}
             envFrom:
             - secretRef:
                 name: ${BENCHMARK_RISINGWAVE_NAME}-node-envs
@@ -66,7 +78,7 @@ spec:
         template:
           metadata:
             labels:
-              benchmark/system: kube-bench
+              benchmark/system: nexmark-risingwave
               benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
               benchmark/pod-affinity: compactor
           spec:
@@ -90,7 +102,7 @@ spec:
               value: "${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_stream=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_batch=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_storage=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_meta=${BENCHMARK_RISINGWAVE_LOG_LEVEL}"
     compute:
       nodeGroups:
-      - name: c
+      - name: default
         replicas: ${BENCHMARK_RISINGWAVE_REPLICAS_COMPUTE}
         volumeClaimTemplates:
         - metadata:
@@ -124,17 +136,3 @@ spec:
               value: prof:${BENCHMARK_RISINGWAVE_COMPUTE_MEMORY_PROFILING_ENABLE},lg_prof_interval:${BENCHMARK_RISINGWAVE_COMPUTE_MEMORY_PROFILING_LG_PROF_INTERVAL},lg_prof_sample:${BENCHMARK_RISINGWAVE_COMPUTE_MEMORY_PROFILING_LG_PROF_SAMPLE},prof_prefix:/risingwave/cache/cn
             - name: RUST_LOG
               value: "${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_stream=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_batch=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_storage=${BENCHMARK_RISINGWAVE_LOG_LEVEL},risingwave_meta=${BENCHMARK_RISINGWAVE_LOG_LEVEL}"
-    connector:
-      nodeGroups:
-      - name: c
-        replicas: ${BENCHMARK_RISINGWAVE_REPLICAS_CONNECTOR}
-        template:
-          spec:
-            nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
-            resources:
-              limits:
-                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_CPU_LIMIT}
-                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_MEM_LIMIT}
-              requests:
-                cpu: ${BENCHMARK_RISINGWAVE_RESOURCES_CPU_REQUEST}
-                memory: ${BENCHMARK_RISINGWAVE_RESOURCES_MEM_REQUEST}

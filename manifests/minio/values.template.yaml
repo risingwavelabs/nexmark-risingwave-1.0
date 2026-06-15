@@ -1,0 +1,47 @@
+# One can list the possible values with
+#   helm show values bitnami/minio
+
+global:
+  security:
+    allowInsecureImages: true
+
+image:
+  registry: docker.io
+  repository: bitnamilegacy/minio
+
+clientImage:
+  registry: docker.io
+  repository: bitnamilegacy/minio-client
+
+defaultBuckets: ${BENCHMARK_RISINGWAVE_STORAGE_MINIO_BUCKET}
+
+auth:
+  rootUser: ${BENCHMARK_MINIO_CREDENTIALS_0_USERNAME}
+  rootPassword: ${BENCHMARK_MINIO_CREDENTIALS_0_PASSWORD}
+
+resources:
+  limits:
+    cpu: ${BENCHMARK_MINIO_RESOURCES_CPU_LIMIT}
+    memory: ${BENCHMARK_MINIO_RESOURCES_MEM_LIMIT}
+  requests:
+    cpu: ${BENCHMARK_MINIO_RESOURCES_CPU_REQUEST}
+    memory: ${BENCHMARK_MINIO_RESOURCES_MEM_REQUEST}
+
+persistence:
+  enabled: ${BENCHMARK_MINIO_PERSISTENCE_ENABLED}
+  storageClass: ${BENCHMARK_MINIO_PERSISTENCE_STORAGE_CLASS}
+  size: ${BENCHMARK_MINIO_PERSISTENCE_SIZE}
+
+podLabels:
+  benchmark/system: nexmark-risingwave
+  benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
+
+nodeSelector: ${BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR}
+
+affinity: ${BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY}
+
+console:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/minio-object-browser

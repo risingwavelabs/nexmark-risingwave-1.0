@@ -1,6 +1,15 @@
 # One can list the possible values with
 #   helm show values bitnami/etcd
 
+global:
+  security:
+    allowInsecureImages: true
+
+image:
+  registry: ${BENCHMARK_ETCD_IMAGE_REGISTRY}
+  repository: ${BENCHMARK_ETCD_IMAGE_REPOSITORY}
+  tag: ${BENCHMARK_ETCD_IMAGE_TAG}
+
 auth:
   rbac:
     create: false
@@ -19,7 +28,7 @@ persistence:
   storageClass: ${BENCHMARK_ETCD_PERSISTENCE_STORAGE_CLASS}
 
 podLabels:
-  benchmark/system: kube-bench
+  benchmark/system: nexmark-risingwave
   benchmark/mutual-exclusive-key: "${BENCHMARK_PODS_DISTRIBUTION_MUTUAL_EXCLUSIVE_KEY}"
   benchmark/pod-affinity: etcd
 

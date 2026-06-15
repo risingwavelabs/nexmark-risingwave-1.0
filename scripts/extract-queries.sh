@@ -16,14 +16,14 @@
 QUERY_FILE=$1
 OUTPUT_DIR=$2
 
-QUERIES="$(cat $QUERY_FILE | yq '.data | keys' | sed 's/^- //')"
+QUERIES="$(cat "$QUERY_FILE" | yq '.data | keys' | sed 's/^- //')"
 
 for QUERY in $QUERIES
 do
   OUTPATH="$OUTPUT_DIR/$QUERY"
-  echo $OUTPATH
+  echo "$OUTPATH"
   QUOTED_QUERY="\"$QUERY\""
-  QUERY_SQL="$(cat $QUERY_FILE \
+  QUERY_SQL="$(cat "$QUERY_FILE" \
   | QUERY=$QUOTED_QUERY yq '.data | .[env(QUERY)]')"
-  echo "$QUERY_SQL" > $OUTPATH
+  echo "$QUERY_SQL" > "$OUTPATH"
 done
