@@ -1,6 +1,6 @@
-# Nexmark RisingWave 1.0 Benchmark
+# Nexmark RisingWave Benchmark
 
-This repository is a Kubernetes runner for the Nexmark benchmark on RisingWave 1.0 and Apache Flink.
+This repository is a Kubernetes runner for the Nexmark benchmark on RisingWave and Apache Flink.
 
 The default RisingWave benchmark configuration uses:
 
@@ -75,7 +75,7 @@ data_directory = "hummock_001"
 
 ### Use AWS S3 Instead Of MinIO
 
-MinIO is only the default local smoke path. To run RisingWave with AWS S3 state storage, set the storage type to `s3`
+MinIO is the default local object-store path. To run RisingWave with AWS S3 state storage, set the storage type to `s3`
 and provide the S3 bucket, region, and credentials in the override file:
 
 ```toml
