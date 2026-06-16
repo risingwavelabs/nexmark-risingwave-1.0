@@ -135,7 +135,7 @@ function prerequisites::install::macos::aws() {
 }
 
 function prerequisites::install::macos::tomlenv() {
-  logging::error "Please download it from the https://github.com/risingwavelabs/kube-bench/releases and make sure it is in the \$PATH"
+  logging::error "Please run 'make tomlenv' from the repo root, then add './tomlenv/bin' to PATH or run commands from the repo root."
   return 1
 }
 
@@ -189,7 +189,7 @@ function prerequisites::install::linux::aws() {
 }
 
 function prerequisites::install::linux::tomlenv() {
-  logging::error "Please download it from the https://github.com/risingwavelabs/kube-bench/releases and make sure it is in the \$PATH"
+  logging::error "Please run 'make tomlenv' from the repo root, then add './tomlenv/bin' to PATH or run commands from the repo root."
   return 1
 }
 

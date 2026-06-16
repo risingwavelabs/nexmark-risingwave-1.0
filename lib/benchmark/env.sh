@@ -41,7 +41,65 @@ EOF
     fi
   fi
 
-  if [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "s3" ]]; then
+  case "${BENCHMARK_RISINGWAVE_META_STORE}" in
+  etcd)
+    # shellcheck disable=SC2155
+    export BENCHMARK_RISINGWAVE_META_STORE_SPEC=$(
+      cat <<EOF | jq -c
+{
+  "etcd": {
+    "endpoint": "${BENCHMARK_ETCD_NAME}.${BENCHMARK_NAMESPACE}:2379"
+  }
+}
+EOF
+    )
+    ;;
+  postgresql)
+    # shellcheck disable=SC2155
+    export BENCHMARK_RISINGWAVE_META_STORE_SPEC=$(
+      cat <<EOF | jq -c
+{
+  "postgresql": {
+    "credentials": {
+      "secretName": "${BENCHMARK_RISINGWAVE_NAME}-metastore-postgresql-credentials",
+      "usernameKeyRef": "username",
+      "passwordKeyRef": "password"
+    },
+    "database": "${BENCHMARK_POSTGRESQL_METASTORE_DATABASE}",
+    "host": "${BENCHMARK_POSTGRESQL_METASTORE_NAME}.${BENCHMARK_NAMESPACE}",
+    "port": 5432
+  }
+}
+EOF
+    )
+    ;;
+  *)
+    logging::error "Invalid meta store: ${BENCHMARK_RISINGWAVE_META_STORE}"
+    return 1
+    ;;
+  esac
+
+  if [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "minio" ]]; then
+    export BENCHMARK_RISINGWAVE_STORAGE_DATA_DIRECTORY="${BENCHMARK_RISINGWAVE_STORAGE_MINIO_DATA_DIRECTORY}"
+    # shellcheck disable=SC2155
+    export BENCHMARK_RISINGWAVE_STORAGE_GEN_OBJECTS=$(
+      cat <<EOF | jq -c
+{
+  "dataDirectory": "${BENCHMARK_RISINGWAVE_STORAGE_MINIO_DATA_DIRECTORY}",
+  "minio": {
+    "endpoint": "${BENCHMARK_MINIO_NAME}.${BENCHMARK_NAMESPACE}:9000",
+    "bucket": "${BENCHMARK_RISINGWAVE_STORAGE_MINIO_BUCKET}",
+    "credentials": {
+      "secretName": "${BENCHMARK_RISINGWAVE_NAME}-minio-credentials",
+      "usernameKeyRef": "username",
+      "passwordKeyRef": "password"
+    }
+  }
+}
+EOF
+    )
+  elif [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "s3" ]]; then
+    export BENCHMARK_RISINGWAVE_STORAGE_DATA_DIRECTORY="${BENCHMARK_RISINGWAVE_STORAGE_S3_DATA_DIRECTORY}"
     # shellcheck disable=SC2155
     export BENCHMARK_RISINGWAVE_STORAGE_GEN_OBJECTS=$(
       cat <<EOF | jq -c
@@ -58,11 +116,12 @@ EOF
 EOF
     )
   elif [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "s3c" ]]; then
+    export BENCHMARK_RISINGWAVE_STORAGE_DATA_DIRECTORY="${BENCHMARK_RISINGWAVE_STORAGE_S3C_DATA_DIRECTORY}"
     # shellcheck disable=SC2155
     export BENCHMARK_RISINGWAVE_STORAGE_GEN_OBJECTS=$(
       cat <<EOF | jq -c
 {
-  "dataDirectory": "${BENCHMARK_RISINGWAVE_STORAGE_S3_DATA_DIRECTORY}",
+  "dataDirectory": "${BENCHMARK_RISINGWAVE_STORAGE_S3C_DATA_DIRECTORY}",
   "s3": {
     "region": "${BENCHMARK_RISINGWAVE_STORAGE_S3C_REGION}",
     "bucket": "${BENCHMARK_RISINGWAVE_STORAGE_S3C_BUCKET}",
@@ -76,6 +135,7 @@ EOF
 EOF
     )
   elif [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "gcs" ]]; then
+    export BENCHMARK_RISINGWAVE_STORAGE_DATA_DIRECTORY="${BENCHMARK_RISINGWAVE_STORAGE_GCS_DATA_DIRECTORY}"
     # shellcheck disable=SC2155
     export BENCHMARK_RISINGWAVE_STORAGE_GEN_OBJECTS=$(
       cat <<EOF | jq -c
@@ -92,6 +152,7 @@ EOF
 EOF
     )
   elif [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "azureblob" ]]; then
+    export BENCHMARK_RISINGWAVE_STORAGE_DATA_DIRECTORY="${BENCHMARK_RISINGWAVE_STORAGE_AZUREBLOB_DATA_DIRECTORY}"
     # shellcheck disable=SC2155
     export BENCHMARK_RISINGWAVE_STORAGE_GEN_OBJECTS=$(
       cat <<EOF | jq -c
@@ -108,11 +169,19 @@ EOF
 }
 EOF
     )
+  else
+    logging::error "Invalid storage type: ${BENCHMARK_RISINGWAVE_STORAGE_TYPE}"
+    return 1
   fi
 
   if [[ "${BENCHMARK_PODS_DISTRIBUTION_NODE_SELECTORS}" != "" ]]; then
     BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR=$(args::convert_key_value_pairs_to_json "${BENCHMARK_PODS_DISTRIBUTION_NODE_SELECTORS}")
     export BENCHMARK_PODS_DISTRIBUTION_GEN_NODE_SELECTOR
+
+    local frontend_meta_affinity_label="etcd"
+    if [[ "${BENCHMARK_RISINGWAVE_META_STORE}" == "postgresql" ]]; then
+      frontend_meta_affinity_label="metastore"
+    fi
 
     # shellcheck disable=SC2155
     export BENCHMARK_PODS_DISTRIBUTION_GEN_AFFINITY_FRONTEND_META=$(
@@ -124,7 +193,7 @@ EOF
        "topologyKey": "kubernetes.io/hostname",
        "labelSelector": {
          "matchLabels": {
-           "benchmark/pod-affinity": "etcd"
+           "benchmark/pod-affinity": "${frontend_meta_affinity_label}"
          }
        }
      }
@@ -183,6 +252,20 @@ EOF
       ;;
     *) ;;
     esac
+  fi
+
+  if [[ ! -v BENCHMARK_RISINGWAVE_RESOURCES_META_CPU_LIMIT ]]; then
+    export BENCHMARK_RISINGWAVE_RESOURCES_META_CPU_LIMIT="${BENCHMARK_RISINGWAVE_RESOURCES_CPU_LIMIT}"
+    export BENCHMARK_RISINGWAVE_RESOURCES_META_CPU_REQUEST="${BENCHMARK_RISINGWAVE_RESOURCES_CPU_REQUEST}"
+    export BENCHMARK_RISINGWAVE_RESOURCES_META_MEM_LIMIT="${BENCHMARK_RISINGWAVE_RESOURCES_MEM_LIMIT}"
+    export BENCHMARK_RISINGWAVE_RESOURCES_META_MEM_REQUEST="${BENCHMARK_RISINGWAVE_RESOURCES_MEM_REQUEST}"
+  fi
+
+  if [[ ! -v BENCHMARK_RISINGWAVE_RESOURCES_FRONTEND_CPU_LIMIT ]]; then
+    export BENCHMARK_RISINGWAVE_RESOURCES_FRONTEND_CPU_LIMIT="${BENCHMARK_RISINGWAVE_RESOURCES_CPU_LIMIT}"
+    export BENCHMARK_RISINGWAVE_RESOURCES_FRONTEND_CPU_REQUEST="${BENCHMARK_RISINGWAVE_RESOURCES_CPU_REQUEST}"
+    export BENCHMARK_RISINGWAVE_RESOURCES_FRONTEND_MEM_LIMIT="${BENCHMARK_RISINGWAVE_RESOURCES_MEM_LIMIT}"
+    export BENCHMARK_RISINGWAVE_RESOURCES_FRONTEND_MEM_REQUEST="${BENCHMARK_RISINGWAVE_RESOURCES_MEM_REQUEST}"
   fi
 
   # Set risingwave compactor and compute affinity.

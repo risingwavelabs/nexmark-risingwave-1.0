@@ -7,14 +7,14 @@ source "$(dirname "${BASH_SOURCE[0]}")/runtime.sh"
 #######################################
 # Test if etcd is enabled.
 # Globals
-#   None
+#   BENCHMARK_RISINGWAVE_META_STORE
 # Arguments
 #   None
 # Returns
-#   0
+#   0 when the configured RisingWave meta store is etcd, 1 otherwise.
 #######################################
 function benchmark::component::etcd::enabled() {
-  return 0
+  [[ "${BENCHMARK_RISINGWAVE_META_STORE}" == "etcd" ]]
 }
 
 #######################################
@@ -72,6 +72,122 @@ function benchmark::component::etcd::stop() {
   common::run k8s::kubectl delete pvc -l app.kubernetes.io/instance="${BENCHMARK_ETCD_NAME}"
 
   logging::info "Stopped!"
+}
+
+#######################################
+# Test if PostgreSQL metastore is enabled.
+# Globals
+#   BENCHMARK_RISINGWAVE_META_STORE
+# Arguments
+#   None
+# Returns
+#   0 for true, 1 for false
+#######################################
+function benchmark::component::postgresql::metastore::enabled() {
+  [[ "${BENCHMARK_RISINGWAVE_META_STORE}" == "postgresql" ]]
+}
+
+#######################################
+# Start PostgreSQL for RisingWave metastore.
+# Globals
+#   BENCHMARK_POSTGRESQL_*
+# Arguments
+#   None
+# Returns
+#   0 if succeeds, non-zero on error.
+#######################################
+function benchmark::component::postgresql::metastore::start() {
+  benchmark::component::postgresql::metastore::enabled || return 0
+
+  # shellcheck disable=SC2034
+  local LOGGING_TAGS=(component "postgresql: ${BENCHMARK_POSTGRESQL_METASTORE_NAME}")
+
+  logging::info "Starting..."
+
+  if ! helm::release::is_deployed "${BENCHMARK_POSTGRESQL_METASTORE_NAME}"; then
+    local template_path
+    template_path=$(benchmark::runtime::path manifests/postgresql/metastore.template.yaml)
+
+    if ! common::run "env::generate_rendered_manifest ${template_path} | helm::helm upgrade --install --wait ${BENCHMARK_POSTGRESQL_METASTORE_NAME} -f - bitnami/postgresql"; then
+      logging::error "Failed!"
+      return 1
+    fi
+  fi
+
+  logging::info "Started!"
+}
+
+#######################################
+# Stop PostgreSQL metastore and delete its persistent volumes.
+# Globals
+#   BENCHMARK_POSTGRESQL_*
+# Arguments
+#   None
+# Returns
+#   0 if succeeds, non-zero on error.
+#######################################
+function benchmark::component::postgresql::metastore::stop() {
+  benchmark::component::postgresql::metastore::enabled || return 0
+
+  # shellcheck disable=SC2034
+  local LOGGING_TAGS=(component "postgresql: ${BENCHMARK_POSTGRESQL_METASTORE_NAME}")
+
+  logging::info "Stopping..."
+
+  if helm::release::exists "${BENCHMARK_POSTGRESQL_METASTORE_NAME}"; then
+    common::run helm::helm uninstall "${BENCHMARK_POSTGRESQL_METASTORE_NAME}"
+  fi
+  common::run k8s::kubectl delete pvc -l app.kubernetes.io/instance="${BENCHMARK_POSTGRESQL_METASTORE_NAME}"
+
+  logging::info "Stopped!"
+}
+
+#######################################
+# Start the configured RisingWave metastore backend.
+# Globals
+#   BENCHMARK_RISINGWAVE_META_STORE
+# Arguments
+#   None
+# Returns
+#   0 if succeeds, non-zero on error.
+#######################################
+function benchmark::component::metastore::start() {
+  case "${BENCHMARK_RISINGWAVE_META_STORE}" in
+  etcd)
+    benchmark::component::etcd::start
+    ;;
+  postgresql)
+    benchmark::component::postgresql::metastore::start
+    ;;
+  *)
+    logging::error "Invalid meta store: ${BENCHMARK_RISINGWAVE_META_STORE}"
+    return 1
+    ;;
+  esac
+}
+
+#######################################
+# Stop the configured RisingWave metastore backend.
+# Globals
+#   BENCHMARK_RISINGWAVE_META_STORE
+# Arguments
+#   None
+# Returns
+#   0 if succeeds, non-zero on error.
+#######################################
+function benchmark::component::metastore::stop() {
+  case "${BENCHMARK_RISINGWAVE_META_STORE}" in
+  etcd)
+    benchmark::component::etcd::stop
+    ;;
+  postgresql)
+    benchmark::component::postgresql::metastore::stop
+    ;;
+  *)
+    logging::error "Invalid meta store: ${BENCHMARK_RISINGWAVE_META_STORE}"
+    return 1
+    ;;
+  esac
 }
 
 #######################################
@@ -160,6 +276,74 @@ function benchmark::component::kafka::stop() {
 }
 
 #######################################
+# Test if MinIO is enabled.
+# Globals
+#   BENCHMARK_RISINGWAVE_STORAGE_TYPE
+# Arguments
+#   None
+# Returns
+#   0 for true, 1 for false
+#######################################
+function benchmark::component::minio::enabled() {
+  [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "minio" ]]
+}
+
+#######################################
+# Start MinIO and wait before it is running.
+# Globals
+#   BENCHMARK_MINIO_*
+# Arguments
+#   None
+# Returns
+#   0 if succeeds, non-zero on error.
+#######################################
+function benchmark::component::minio::start() {
+  benchmark::component::minio::enabled || return 0
+
+  # shellcheck disable=SC2034
+  local LOGGING_TAGS=(component "minio: ${BENCHMARK_MINIO_NAME}")
+
+  logging::info "Starting..."
+
+  if ! helm::release::is_deployed "${BENCHMARK_MINIO_NAME}"; then
+    local template_path
+    template_path=$(benchmark::runtime::path manifests/minio/values.template.yaml)
+
+    if ! common::run "env::generate_rendered_manifest ${template_path} | helm::helm upgrade --install --wait ${BENCHMARK_MINIO_NAME} -f - bitnami/minio"; then
+      logging::error "Failed!"
+      return 1
+    fi
+  fi
+
+  logging::info "Started!"
+}
+
+#######################################
+# Stop MinIO and delete its persistent volumes.
+# Globals
+#   BENCHMARK_MINIO_*
+# Arguments
+#   None
+# Returns
+#   0 if succeeds, non-zero on error.
+#######################################
+function benchmark::component::minio::stop() {
+  benchmark::component::minio::enabled || return 0
+
+  # shellcheck disable=SC2034
+  local LOGGING_TAGS=(component "minio: ${BENCHMARK_MINIO_NAME}")
+
+  logging::info "Stopping..."
+
+  if helm::release::exists "${BENCHMARK_MINIO_NAME}"; then
+    common::run helm::helm uninstall "${BENCHMARK_MINIO_NAME}"
+  fi
+  common::run k8s::kubectl delete pvc -l app.kubernetes.io/instance="${BENCHMARK_MINIO_NAME}"
+
+  logging::info "Stopped!"
+}
+
+#######################################
 # Create a ConfigMap in Kubernetes as the template of the RisingWave config.
 #
 # Globals
@@ -237,21 +421,28 @@ function benchmark::component::risingwave::manifest_file() {
 #   0 if succeeds, non-zero on error.
 #######################################
 function benchmark::component::risingwave::create_credentials_secrets() {
+  local path
+
   # shellcheck disable=SC2155
   if [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "s3" ]]; then
-    local path=$(benchmark::runtime::path manifests/risingwave/secrets/s3-credentials.template.yaml)
+    path=$(benchmark::runtime::path manifests/risingwave/secrets/s3-credentials.template.yaml)
     common::run "env::generate_rendered_manifest ${path} | k8s::kubectl apply -f -"
   elif [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "s3c" ]]; then
-    local path=$(benchmark::runtime::path manifests/risingwave/secrets/s3c-credentials.template.yaml)
+    path=$(benchmark::runtime::path manifests/risingwave/secrets/s3c-credentials.template.yaml)
     common::run "env::generate_rendered_manifest ${path} | k8s::kubectl apply -f -"
   elif [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "minio" ]]; then
-    local path=$(benchmark::runtime::path manifests/risingwave/secrets/minio-credentials.template.yaml)
+    path=$(benchmark::runtime::path manifests/risingwave/secrets/minio-credentials.template.yaml)
     common::run "env::generate_rendered_manifest ${path} | k8s::kubectl apply -f -"
   elif [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "gcs" ]]; then
-    local path=$(benchmark::runtime::path manifests/risingwave/secrets/gcs-credentials.template.yaml)
+    path=$(benchmark::runtime::path manifests/risingwave/secrets/gcs-credentials.template.yaml)
     common::run "env::generate_rendered_manifest ${path} | k8s::kubectl apply -f -"
   elif [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "azureblob" ]]; then
-    local path=$(benchmark::runtime::path manifests/risingwave/secrets/azureblob-credentials.template.yaml)
+    path=$(benchmark::runtime::path manifests/risingwave/secrets/azureblob-credentials.template.yaml)
+    common::run "env::generate_rendered_manifest ${path} | k8s::kubectl apply -f -"
+  fi
+
+  if [[ "${BENCHMARK_RISINGWAVE_META_STORE}" == "postgresql" ]]; then
+    path=$(benchmark::runtime::path manifests/risingwave/secrets/metastore-postgresql-credentials.template.yaml)
     common::run "env::generate_rendered_manifest ${path} | k8s::kubectl apply -f -"
   fi
 }
@@ -277,6 +468,10 @@ function benchmark::component::risingwave::clean_credentials_secrets() {
     common::run k8s::kubectl delete secret "${BENCHMARK_RISINGWAVE_NAME}-gcs-credentials" --ignore-not-found=true
   elif [[ "${BENCHMARK_RISINGWAVE_STORAGE_TYPE}" == "azureblob" ]]; then
     common::run k8s::kubectl delete secret "${BENCHMARK_RISINGWAVE_NAME}-azureblob-credentials" --ignore-not-found=true
+  fi
+
+  if [[ "${BENCHMARK_RISINGWAVE_META_STORE}" == "postgresql" ]]; then
+    common::run k8s::kubectl delete secret "${BENCHMARK_RISINGWAVE_NAME}-metastore-postgresql-credentials" --ignore-not-found=true
   fi
 }
 

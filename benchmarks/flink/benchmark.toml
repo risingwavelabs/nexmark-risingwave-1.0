@@ -1,5 +1,5 @@
 [benchmark]
-namespace = "flink"
+namespace = "benchmark-flink"
 system = "flink"
 
 [benchmark.aws]

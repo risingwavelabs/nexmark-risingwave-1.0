@@ -59,7 +59,7 @@ spec:
             fi
       containers:
       - name: kafka-clean
-        image: bitnami/kafka:latest
+        image: ${BENCHMARK_KAFKA_IMAGE_REGISTRY}/${BENCHMARK_KAFKA_IMAGE_REPOSITORY}:${BENCHMARK_KAFKA_IMAGE_TAG}
         imagePullPolicy: IfNotPresent
         command:
         - bash

@@ -1,9 +1,28 @@
 # One can list the possible values with
 #   helm show values bitnami/kafka
 
+global:
+  security:
+    allowInsecureImages: true
+
+image:
+  registry: ${BENCHMARK_KAFKA_IMAGE_REGISTRY}
+  repository: ${BENCHMARK_KAFKA_IMAGE_REPOSITORY}
+  tag: ${BENCHMARK_KAFKA_IMAGE_TAG}
+
+listeners:
+  client:
+    protocol: PLAINTEXT
+  controller:
+    protocol: PLAINTEXT
+  interbroker:
+    protocol: PLAINTEXT
+  external:
+    protocol: PLAINTEXT
+
 deleteTopicEnable: true
 
-logRetentionBytes: _${BENCHMARK_KAFKA_LOG_RETENTION_BYTES}
+logRetentionBytes: ${BENCHMARK_KAFKA_LOG_RETENTION_BYTES}
 
 logRetentionHours: ${BENCHMARK_KAFKA_LOG_RETENTION_HOURS}
 
@@ -31,6 +50,10 @@ metrics:
     enabled: ${BENCHMARK_KAFKA_METRICS_KAFKA_ENABLED}
   jmx:
     enabled: ${BENCHMARK_KAFKA_METRICS_JMX_ENABLED}
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/jmx-exporter
+      tag: 1.4.0-debian-12-r0
   serviceMonitor:
     enabled: ${BENCHMARK_KAFKA_METRICS_SERVICEMONITOR_ENABLED}
 

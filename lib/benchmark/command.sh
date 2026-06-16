@@ -12,7 +12,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/stage.sh"
 # The main entrance of the benchmark script.
 # Globals
 #   BENCHMARK_*
-#   BENCHMARK_BASE defines the base directory of kube-bench scripts.
+#   BENCHMARK_BASE defines the base directory of nexmark-risingwave scripts.
 #   BENCHMARK_ENV_OVERRIDE defines the override file to read.
 # Arguments
 #   Variable sized strings.
@@ -246,7 +246,8 @@ function benchmark::command::setup() {
     # shellcheck disable=SC2034
     local BACKGROUND_PIDS=()
 
-    job::spawn "(benchmark::component::etcd::start)"
+    job::spawn "(benchmark::component::metastore::start)"
+    job::spawn "(benchmark::component::minio::start)"
     job::spawn "(benchmark::component::kafka::start)"
 
     job::wait
@@ -297,7 +298,8 @@ function benchmark::command::teardown() {
 
     case "${BENCHMARK_SYSTEM}" in
     "risingwave")
-      job::spawn "(benchmark::component::etcd::stop)"
+      job::spawn "(benchmark::component::metastore::stop)"
+      job::spawn "(benchmark::component::minio::stop)"
       job::spawn "(benchmark::component::kafka::stop)"
       job::spawn "(benchmark::component::risingwave::stop)"
 

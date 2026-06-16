@@ -1,170 +1,294 @@
-# BENCHMARK
+# Nexmark RisingWave Benchmark
 
-A benchmark tool to run the [Nexmark Benchmark](https://github.com/nexmark/nexmark) on both RisingWave and Apache Flink
-with Kubernetes.
+This repository is a Kubernetes runner for the Nexmark benchmark on RisingWave and Apache Flink.
+
+The default RisingWave benchmark configuration uses:
+
+- PostgreSQL as the RisingWave meta store.
+- MinIO as the RisingWave state store.
+- Kafka for Kafka-based Nexmark data generation.
+
+Etcd and external object stores such as S3, GCS, Azure Blob, or S3-compatible storage remain available through configuration.
 
 ## Prerequisites
 
 - Kubernetes >= 1.21
 - Helm >= 3.0
 - Bash >= 4.4
+- Go 1.19+
 - RisingWave Operator >= 0.5.0
+- `jq` and `kubectl`
+- Cloud CLIs only when using an external object store
 
-## Run
+## Validation
 
-### Before Running
-
-Ensure that the Kubernetes cluster is ready. Run the following command to check:
+Build the TOML environment loader and render-check all tracked templates:
 
 ```shell
-kubectl get nodes
+make check
 ```
 
-Ensure there are at least 4 nodes with 8 CPU cores and 16 GB memory. For each test,
+Run shellcheck on tracked shell scripts:
 
-- 1 node is used for the benchmark driver
-- 1 node is used for the Apache Kafka and Apache Zookeeper
-- The rest nodes are used for the RisingWave or Apache Flink
-    - For RisingWave, 1 node is used for etcd, meta, and frontend, another node is used for compute and compactor
-    - For Apache Flink, 1 node is used for JobManager, another node is used for TaskManager
+```shell
+make shellcheck
+```
 
-One could customize the requirements by modifying the resources part in `benchmark.toml` files in the `benchmarks`
-directory as long as he understands the deployment.
+Build the console image locally:
 
-### Build and Start a Docker Container
+```shell
+make docker-build
+```
 
-The scripts rely on several external tools to run. We provide a Dockerfile to build a Docker image with all the tools.
+## Docker Console
 
-Just run the following command to build the Docker image and start a container:
+The scripts rely on several external tools. Build and start a local container with:
 
 ```shell
 make start
 ```
 
-### Set Up
+This mounts your local kubeconfig, AWS config, and repository into the container.
 
-#### Set Up RisingWave
+## RisingWave Benchmark
 
-Export the following environment variables and keep it in all rest steps:
+Use the RisingWave override file:
 
 ```shell
 export BENCHMARK_ENV_OVERRIDE=benchmarks/risingwave/benchmark.toml
 ```
 
-Update the AWS credentials required to create the S3 bucket for the benchmark in `benchmarks/risingwave/benchmark.toml`:
+The RisingWave override is a benchmark-scale profile for a provisioned cluster. It deploys PostgreSQL and MinIO inside
+the benchmark namespace, so it does not require cloud object-store credentials. The sample uses RisingWave `v3.0.0` with
+PostgreSQL-backed metadata.
 
 ```toml
-[benchmark.aws.credentials]
-access_key = ""
-access_secret = ""
+[benchmark.risingwave]
+meta_store = "postgresql"
+
+[benchmark.risingwave.storage]
+type = "minio"
+
+[benchmark.risingwave.storage.minio]
+bucket = "hummock"
+data_directory = "hummock_001"
 ```
 
-Or export them into environment variables:
+### Small Smoke Profile
+
+Use the smoke override for a quick local validation run with the same PostgreSQL metadata and MinIO state-store path but
+smaller workload and resource settings:
 
 ```shell
-export BENCHMARK_AWS_CREDENTIALS_ACCESS_KEY=""
-export BENCHMARK_AWS_CREDENTIALS_ACCESS_SECRET=""
+export BENCHMARK_ENV_OVERRIDE=benchmarks/risingwave/smoke.toml
 ```
 
-(optional) Update the options where S3 bucket will be created:
+The smoke profile runs `q0` with `10000` generated Kafka events, one generator thread, one Kafka partition, smaller pod
+resources, and `8Gi` PostgreSQL/MinIO/Kafka PVCs. It is intended for validating the lifecycle, not for performance
+numbers.
+
+### Use AWS S3 Instead Of MinIO
+
+MinIO is the default local object-store path. To run RisingWave with AWS S3 state storage, set the storage type to `s3`
+and provide the S3 bucket, region, and credentials in the override file:
 
 ```toml
+[benchmark.aws]
+# Set to true if you want an interactive confirmation before bucket create/delete.
+ask_before_proceed = false
+
+[benchmark.risingwave.storage]
+type = "s3"
+
 [benchmark.risingwave.storage.s3]
 region = "us-east-1"
-bucket = "risingwave"
+bucket = "my-risingwave-benchmark-bucket"
+data_directory = "hummock_001"
+access_key = "$$env(AWS_ACCESS_KEY_ID)"
+access_secret = "$$env(AWS_SECRET_ACCESS_KEY)"
 ```
 
-Then run the following command to set up the all required components:
+Use an existing bucket by leaving bucket lifecycle disabled:
+
+```toml
+[benchmark.s3.bucket]
+create_enabled = false
+delete_enabled = false
+```
+
+Or let the runner create and delete the bucket for a disposable test:
+
+```toml
+[benchmark.s3.bucket]
+create_enabled = true
+delete_enabled = true
+```
+
+When `type = "s3"`, the runner creates the RisingWave S3 credentials secret and does not deploy MinIO.
+
+### Configure Test Parameters
+
+The runner loads `env.toml` plus one override file. If `BENCHMARK_ENV_OVERRIDE` is set, that file is used as the
+override. Otherwise, the default override path is `env.override.toml`.
+
+For local experiments, either edit `benchmarks/risingwave/benchmark.toml` directly or copy it and point
+`BENCHMARK_ENV_OVERRIDE` to the copy:
+
+```shell
+cp benchmarks/risingwave/benchmark.toml env.override.toml
+unset BENCHMARK_ENV_OVERRIDE
+```
+
+Common Nexmark workload parameters:
+
+```toml
+[benchmark.nexmark]
+# Comma-separated query names. Do not add spaces.
+query = "q0,q3"
+# 0 means use RisingWave's default parallelism.
+streaming_parallelism = 0
+
+[benchmark.nexmark_kafka]
+# Total events generated into Kafka during prepare.
+max_events = 1000000
+# Target total generation rate across all generator threads.
+event_rate = 10000
+# Number of event generator threads.
+generator_thread_num = 8
+# Kafka topic partition count.
+partition = 8
+# Reuse existing Kafka data on repeated runs.
+skip_insert_kafka = true
+keep_kafka_data = true
+```
+
+Use `skip_insert_kafka = false` for a fresh data generation run. Use `keep_kafka_data = false` when you want `clean` to
+delete benchmark topics.
+
+For a quick smoke test, lower `max_events`, `event_rate`, `generator_thread_num`, `partition`, and the relevant resource
+requests in the same override file.
+
+### Configure RisingWave Resources
+
+Scale RisingWave replicas with:
+
+```toml
+[benchmark.risingwave.replicas]
+meta = 1
+frontend = 1
+compute = 2
+compactor = 1
+```
+
+Set the default RisingWave component resource request and limit with:
+
+```toml
+[benchmark.risingwave.resources]
+cpu = { limit = "4", request = "2" }
+mem = { limit = "8Gi", request = "4Gi" }
+```
+
+Use component-specific sections when meta, frontend, compute, or compactor need different sizing:
+
+```toml
+[benchmark.risingwave.resources.meta]
+cpu = { limit = "2", request = "1" }
+mem = { limit = "4Gi", request = "2Gi" }
+
+[benchmark.risingwave.resources.frontend]
+cpu = { limit = "2", request = "1" }
+mem = { limit = "4Gi", request = "2Gi" }
+
+[benchmark.risingwave.resources.compute]
+cpu = { limit = "8", request = "4" }
+mem = { limit = "16Gi", request = "8Gi" }
+
+[benchmark.risingwave.resources.compactor]
+cpu = { limit = "2", request = "1" }
+mem = { limit = "4Gi", request = "2Gi" }
+```
+
+If a component-specific section is omitted, meta and frontend use `[benchmark.risingwave.resources]`. Compute and
+compactor also use `[benchmark.risingwave.resources]` by default. To apply separate compute and compactor sizing, enable
+node selectors for the pod distribution settings:
+
+```toml
+[benchmark.pods.distribution]
+node_selectors = "node-group:benchmark"
+compactor_compute_affinity_enabled = "true"
+```
+
+Supporting service resources are configured separately:
+
+```toml
+[benchmark.kafka.resources]
+cpu = { limit = "2", request = "1" }
+mem = { limit = "4Gi", request = "2Gi" }
+
+[benchmark.postgresql.metastore.resources]
+cpu = { limit = "1", request = "500m" }
+mem = { limit = "2Gi", request = "1Gi" }
+
+[benchmark.minio.resources]
+cpu = { limit = "1", request = "500m" }
+mem = { limit = "2Gi", request = "1Gi" }
+```
+
+Run the lifecycle:
 
 ```shell
 ./benchmark.sh setup -i
+./benchmark.sh prepare
+./benchmark.sh start
+./benchmark.sh logs -f
+./benchmark.sh clean
+./benchmark.sh teardown
 ```
 
-#### Set Up Flink
+RisingWave setup starts the configured meta store, the configured object store, Kafka, and RisingWave.
 
-Similar to RisingWave, export the following environment variables:
+## Flink Benchmark
+
+Use the Flink override file:
 
 ```shell
 export BENCHMARK_ENV_OVERRIDE=benchmarks/flink/benchmark.toml
 ```
 
-Update the AWS credentials required to create the S3 bucket for the benchmark in `benchmarks/flink/benchmark.toml`:
-
-```toml
-[benchmark.aws.credentials]
-access_key = ""
-access_secret = ""
-```
-
-Or export them into environment variables:
-
-```shell
-export BENCHMARK_AWS_CREDENTIALS_ACCESS_KEY=""
-export BENCHMARK_AWS_CREDENTIALS_ACCESS_SECRET=""
-```
-
-Prepare a S3 bucket on the console and update the options where S3 objects will be created:
+Configure a checkpoint bucket before setup:
 
 ```toml
 [benchmark.flink.s3]
-# The S3 bucket where the checkpoint will be stored. Must be prepared manually.
+access_key = ""
+access_secret = ""
 bucket = "flink"
 bucket_folder = "checkpoints"
 ```
 
-Then run the following command to set up the all required components:
+Then run the same lifecycle:
 
 ```shell
 ./benchmark.sh setup -i
-```
-
-### Run Benchmark
-
-Run the following command to prepare data and start:
-
-```shell
 ./benchmark.sh prepare
 ./benchmark.sh start
+./benchmark.sh logs -f
+./benchmark.sh clean
+./benchmark.sh teardown
 ```
 
-By default, they will start the Nexmark `q0`.
+## Query Changes
 
-> Note: the steps above are required for both RisingWave and Apache Flink. They have different implementations but they
-> should all prepare data in the same way and start the benchmark.
-
-### Restart with Another Query
-
-Before restarting with another query, please update the following two options in `benchmarks/*/benchmark.toml`:
+Change the Nexmark query in the selected override file:
 
 ```toml
 [benchmark.nexmark]
-# Change it to another query to run another query. For supported values, please refer to the following two files:
-#  - manifests/nexmark/nexmark-materialized-views.template.yaml
-#  - manifests/flink-nexmark/nexmark-queries.template.yaml
 query = "q0"
+```
 
+For repeated runs against existing Kafka data, set:
+
+```toml
 [benchmark.nexmark_kafka]
-# Change it to true to skip inserting data into Kafka when preparing and deleting the topic when cleaning.
 skip_insert_kafka = true
-```
-
-Then run the following command to clean the previous materialized views and tables:
-
-```shell
-./benchmark.sh clean
-````
-
-And run the following command to start the benchmark again:
-
-```shell
-./benchmark.sh prepare
-./benchmark.sh start
-```
-
-### Tear Down
-
-Run the following command to tear down all the components:
-
-```shell
-./benchmark.sh teardown -f
+keep_kafka_data = true
 ```

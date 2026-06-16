@@ -1,6 +1,15 @@
 # One can list the possible values with
 #   helm show values bitnami/etcd
 
+global:
+  security:
+    allowInsecureImages: true
+
+image:
+  registry: ${BENCHMARK_ETCD_IMAGE_REGISTRY}
+  repository: ${BENCHMARK_ETCD_IMAGE_REPOSITORY}
+  tag: ${BENCHMARK_ETCD_IMAGE_TAG}
+
 auth:
   rbac:
     create: false

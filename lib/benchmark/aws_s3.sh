@@ -306,7 +306,7 @@ function benchmark::external::aws_s3::set_s3_bucket_region() {
   # shellcheck disable=SC2034
   local exit_code=0
 
-  # EKS context example: arn:aws:eks:us-east-1:023339134545:cluster/test-useast1-eks-a
+  # EKS context example: arn:aws:eks:us-east-1:123456789012:cluster/example-eks
   k8s::kubectl config current-context | grep aws:eks >/dev/null || exit_code=$?
   if ((exit_code == 0)); then
     EKS_REGION=$(k8s::kubectl config current-context | cut -d':' -f 4)
