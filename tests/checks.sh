@@ -38,6 +38,11 @@ function tests::env::load_toml_env() {
   env::load_from_toml_files "${ENV_FILES[@]}"
 }
 
+function tests::env::mktemp_dir() {
+  local template="${TMPDIR:-/tmp}/kube-bench.XXXXXXXXXX"
+  mktemp -d "${template}" 2>/dev/null || mktemp -d -t kube-bench
+}
+
 function tests::env::initialize() {
   tests::env::ensure_binary_path
   tests::env::install_a8m_envsubst
@@ -107,7 +112,7 @@ function tests::task::run_config_smoke() {
       benchmark::env::overrides
 
       local render_dir
-      render_dir=$(mktemp -d)
+      render_dir=$(tests::env::mktemp_dir)
       trap 'rm -rf "${render_dir}"' EXIT
 
       "${A8M_ENVSUBST_BIN}" -no-unset <"${ROOT_PATH}/manifests/kafka/values.template.yaml" >"${render_dir}/kafka-values.yaml"
